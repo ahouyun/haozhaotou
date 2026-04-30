@@ -1,0 +1,4706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>吕梁房源 Vault Pro</title>
+    <style>
+        :root {
+            --bg: #f1f5f9;
+            --panel: #ffffff;
+            --primary: #0f172a;
+            --accent: #2563eb;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warn: #f59e0b;
+            --radius: 6px;
+            --font-mono: 'JetBrains Mono', 'Cascadia Code', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "PingFang SC", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            font-size: 13px;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- 左侧侧边栏 --- */
+        .sidebar {
+            width: 280px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+        .sidebar-hd { padding: 20px; border-bottom: 1px solid var(--border); }
+        .brand { font-size: 18px; font-weight: 800; color: var(--primary); letter-spacing: -1px; }
+        .brand span { color: var(--accent); }
+
+        .filter-group { padding: 20px; flex: 1; overflow-y: auto; }
+        .fg { margin-bottom: 16px; }
+        .fg label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; }
+        .inp {
+            width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 8px 10px; font-size: 12px; transition: all 0.2s; background: #f8fafc;
+        }
+        .inp:focus { outline: none; border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .inp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        /* --- 主内容区 --- */
+        .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+        /* 顶栏数据看板 */
+        .dashboard {
+            height: 64px; background: var(--panel); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; padding: 0 24px; gap: 32px;
+        }
+        .db-item { display: flex; flex-direction: column; }
+        .db-val { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--primary); }
+        .db-lbl { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+        .dashboard-actions { margin-left: auto; display: flex; gap: 8px; }
+        .dashboard-actions.backend-panel-hidden .backend-control { display: none !important; }
+        .collect-status {
+            display: inline-flex; flex-direction: column; gap: 4px;
+            min-width: 220px; padding: 6px 10px; border-radius: 10px;
+            border: 1px solid var(--border); background: #fff;
+        }
+        .collect-status-head {
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 11px; color: var(--text-muted); font-weight: 700;
+        }
+        .collect-status-msg {
+            font-size: 11px; color: var(--text-main);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .collect-status.idle .collect-status-msg { color: var(--text-muted); }
+        .collect-status.success { border-color: #86efac; background: #f0fdf4; }
+        .collect-status.failed { border-color: #fecaca; background: #fef2f2; }
+        .collect-status.running { border-color: #bfdbfe; background: #eff6ff; }
+        .backend-status {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 10px; border-radius: 999px;
+            border: 1px solid var(--border); background: #fff;
+            font-size: 11px; font-weight: 700; color: var(--text-muted);
+        }
+        .backend-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+        .backend-status.backend-ok {
+            color: #065f46; background: #ecfdf5; border-color: #a7f3d0;
+        }
+        .backend-status.backend-ok .backend-dot { background: var(--success); }
+        .backend-status.backend-down {
+            color: #991b1b; background: #fef2f2; border-color: #fecaca;
+        }
+        .backend-status.backend-down .backend-dot { background: var(--danger); }
+        .backend-status.backend-checking .backend-dot {
+            background: var(--warn);
+            animation: pulse-dot 1.2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(0.85); }
+        }
+
+        /* 表格容器 */
+        .table-container { flex: 1; overflow: auto; padding: 16px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--panel); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        thead th {
+            position: sticky; top: 0; background: #f8fafc; z-index: 10;
+            padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700;
+            color: var(--text-muted); border-bottom: 2px solid var(--border);
+            cursor: pointer; user-select: none;
+        }
+        thead th:hover { color: var(--accent); background: #f1f5f9; }
+
+        tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tbody tr:hover { background: #f8fafc; }
+        tbody tr.selected { background: #eff6ff !important; }
+
+        /* 功能样式 */
+        .mono { font-family: var(--font-mono); }
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f1f5f9; }
+        .badge-dup { background: #fef3c7; color: #92400e; }
+        .badge-platform { background: #dbeafe; color: #1d4ed8; }
+        .source-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid #bfdbfe;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 12px;
+            text-decoration: none;
+        }
+        .source-link:hover { background: #dbeafe; }
+        .floor-good { color: var(--success); font-weight: 800; }
+        .floor-bad { color: var(--danger); font-weight: 800; }
+        .btn-action {
+            padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px;
+            background: #fff; cursor: pointer; font-size: 12px; font-weight: 600;
+            color: var(--text-main); transition: all 0.15s;
+        }
+        .btn-action:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .btn-action.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .btn-action.btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+        .btn-action.btn-danger { color: var(--danger); }
+        .btn-action.btn-danger:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+        .btn-action[disabled] { opacity: 0.5; cursor: not-allowed; }
+        .btn-action[disabled]:hover { background: #fff; color: var(--text-main); border-color: var(--border); }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        /* --- 模态框 --- */
+        .modal-bg {
+            display: none; position: fixed; inset: 0;
+            background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
+            z-index: 1000; align-items: flex-start; justify-content: center;
+            padding: 5vh 16px; overflow-y: auto;
+        }
+        .modal-bg.active { display: flex; }
+        .modal {
+            background: var(--panel); border-radius: 10px; box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            width: 100%; max-width: 720px; max-height: 90vh; display: flex; flex-direction: column;
+        }
+        .modal.lg { max-width: 1100px; }
+        .modal-hd {
+            padding: 18px 22px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-title { font-size: 15px; font-weight: 800; color: var(--primary); }
+        .modal-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .modal-x {
+            background: none; border: none; cursor: pointer;
+            font-size: 22px; color: var(--text-muted); line-height: 1; padding: 0 6px;
+        }
+        .modal-x:hover { color: var(--primary); }
+        .modal-body { padding: 22px; overflow-y: auto; flex: 1; }
+        .modal-ft {
+            padding: 14px 22px; border-top: 1px solid var(--border);
+            display: flex; gap: 8px; justify-content: flex-end; align-items: center;
+        }
+        .modal-ft-info { margin-right: auto; font-size: 12px; color: var(--text-muted); }
+
+        /* 采集面板 */
+        .form-section { margin-bottom: 18px; }
+        .form-section-label {
+            font-size: 11px; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; margin-bottom: 8px;
+        }
+        .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
+        .pill {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px;
+            cursor: pointer; user-select: none; font-size: 12px; font-weight: 600;
+            background: #fff; color: var(--text-main); transition: all 0.15s;
+        }
+        .pill input { display: none; }
+        .pill:has(input:checked) { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .pill.muted { color: var(--text-muted); }
+
+        .progress-wrap {
+            margin-top: 10px; padding: 16px; background: #f8fafc;
+            border: 1px solid var(--border); border-radius: var(--radius);
+        }
+        .progress-msg { font-size: 12px; color: var(--text-main); margin-bottom: 8px; min-height: 18px; }
+        .progress-bar {
+            width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background: var(--accent); border-radius: 3px;
+            transition: width 0.3s ease; width: 0%;
+        }
+        .progress-fill.success { background: var(--success); }
+        .progress-fill.danger { background: var(--danger); }
+
+        .alert {
+            padding: 12px 14px; border-radius: var(--radius); font-size: 12px;
+            margin-bottom: 14px; line-height: 1.6;
+        }
+        .alert-warn { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .alert-info { background: #dbeafe; color: #1e3a8a; border: 1px solid #bfdbfe; }
+        .collect-success-note {
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid #86efac;
+            background: #f0fdf4;
+            color: #065f46;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        /* 校对表格 */
+        .review-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+        .review-table th {
+            position: sticky; top: 0; background: #f8fafc; padding: 8px 6px;
+            font-size: 11px; font-weight: 700; color: var(--text-muted);
+            border-bottom: 2px solid var(--border); text-align: left;
+        }
+        .review-table td { padding: 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .review-table tr.dup td { background: #fffbeb; }
+        .review-table tr.dup .badge-dup { display: inline-block; }
+        .review-table .cell-input {
+            width: 100%; border: 1px solid transparent; background: transparent;
+            padding: 4px 6px; border-radius: 3px; font-size: 12px; font-family: inherit;
+        }
+        .review-table .cell-input:hover { border-color: var(--border); background: #fff; }
+        .review-table .cell-input:focus {
+            border-color: var(--accent); background: #fff; outline: none;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+        .review-table .cell-input.mono { font-family: var(--font-mono); }
+        .review-table .cell-input.short { width: 70px; }
+        .review-table .cell-input.tiny { width: 50px; }
+
+        /* 手动表单 */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-grid .full { grid-column: 1 / -1; }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+            background: var(--primary); color: #fff; padding: 10px 16px;
+            border-radius: var(--radius); font-size: 12px; font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            opacity: 0; transform: translateY(8px); transition: all 0.25s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background: var(--success); }
+        .toast.danger  { background: var(--danger); }
+
+        .floating-progress {
+            position: fixed;
+            right: 24px;
+            bottom: 72px;
+            width: 320px;
+            z-index: 2100;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+            overflow: hidden;
+        }
+        .floating-progress.hidden { display: none; }
+        .floating-progress.minimized .floating-progress-body { display: none; }
+        .floating-progress-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            cursor: move;
+            user-select: none;
+        }
+        .floating-progress-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .floating-progress-actions { display: inline-flex; gap: 6px; }
+        .floating-progress-btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text-muted);
+            border-radius: 6px;
+            width: 22px;
+            height: 22px;
+            line-height: 20px;
+            text-align: center;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .floating-progress-btn:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .floating-progress-body { padding: 10px; }
+        .floating-progress-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .floating-progress-percent {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .floating-progress-msg {
+            margin-top: 8px;
+            min-height: 30px;
+            max-height: 72px;
+            overflow: auto;
+            font-size: 12px;
+            color: var(--text-main);
+            line-height: 1.45;
+            word-break: break-word;
+        }
+        .floating-progress.state-success .floating-progress-head {
+            background: #ecfdf5;
+        }
+        .floating-progress.state-danger .floating-progress-head {
+            background: #fef2f2;
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <div class="sidebar-hd">
+        <div class="brand">吕梁<span>Vault</span> PRO</div>
+    </div>
+    <div class="filter-group">
+        <div class="fg">
+            <label>快速检索</label>
+            <input type="text" id="f-kw" class="inp" placeholder="小区/编号..." oninput="render()">
+        </div>
+        <div class="fg">
+            <label>所属行政区</label>
+            <select id="f-region" class="inp" onchange="render()">
+                <option value="">全部区域</option>
+                <option value="离石">离石</option>
+                <option value="孝义">孝义</option>
+                <option value="汾阳">汾阳</option>
+                <option value="文水">文水</option>
+                <option value="临县">临县</option>
+                <option value="交城">交城</option>
+                <option value="柳林">柳林</option>
+                <option value="中阳">中阳</option>
+                <option value="方山县">方山县</option>
+                <option value="岚县">岚县</option>
+                <option value="交口县">交口县</option>
+                <option value="兴县">兴县</option>
+                <option value="石楼县">石楼县</option>
+                <option value="吕梁周边">吕梁周边</option>
+            </select>
+        </div>
+        <div class="fg">
+            <label>价格区间 (万)</label>
+            <div class="inp-row">
+                <input type="number" id="f-pmin" class="inp" placeholder="Min" oninput="render()">
+                <input type="number" id="f-pmax" class="inp" placeholder="Max" oninput="render()">
+            </div>
+        </div>
+        <div class="fg">
+            <label>面积下限 (㎡)</label>
+            <input type="number" id="f-area" class="inp" placeholder="0" oninput="render()">
+        </div>
+        <div class="sidebar-ft" style="margin-top: 40px;">
+            <div id="main-selected-tip" class="modal-sub" style="margin-bottom:8px;">已勾选 0 条</div>
+            <button class="btn-action" id="selected-repair-btn" style="width:100%; margin-bottom:8px;" onclick="repairSelectedFromSources()">补齐已勾选房源</button>
+            <label class="modal-sub" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" id="batch-repair-open-toggle" onchange="onBatchRepairAutoOpenToggle(this.checked)">
+                <span>批量补齐时自动打开原文</span>
+            </label>
+            <label class="modal-sub" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" id="batch-repair-open-failed-only-toggle" onchange="onBatchRepairOpenFailedOnlyToggle(this.checked)">
+                <span>仅打开失败项原文（优先）</span>
+            </label>
+            <button class="btn-action" style="width:100%; margin-bottom:8px;" onclick="openXlsImportPicker()">导入 .xls 入库</button>
+            <button class="btn-action" style="width:100%; margin-bottom:8px;" onclick="exportSelectedXls()">导出勾选 .xls</button>
+            <button class="btn-action btn-danger" id="selected-delete-btn" style="width:100%; margin-bottom:8px;" onclick="deleteSelectedRows()">删除已勾选</button>
+            <button class="btn-action" style="width:100%; margin-bottom:8px;" onclick="exportData()">导出 JSON 备份</button>
+            <button class="btn-action btn-danger" style="width:100%;" onclick="clearFilters()">重置所有筛选</button>
+            <input type="file" id="xls-import-input" accept=".xls,.html,.htm" style="display:none" onchange="onXlsImportFileChange(event)">
+        </div>
+    </div>
+</aside>
+
+<main class="main">
+    <header class="dashboard">
+        <div class="db-item">
+            <div class="db-lbl">匹配标的</div>
+            <div class="db-val" id="s-count">0</div>
+        </div>
+        <div class="db-item">
+            <div class="db-lbl">均总价 (万)</div>
+            <div class="db-val" id="s-avg-total" style="color:var(--danger)">0</div>
+        </div>
+        <div class="db-item">
+            <div class="db-lbl">均单价 (元/㎡)</div>
+            <div class="db-val" id="s-avg-unit" style="color:var(--accent)">0</div>
+        </div>
+        <div class="dashboard-actions">
+            <div id="collect-status-pill" class="collect-status idle" title="采集任务状态">
+                <div class="collect-status-head">
+                    <span id="collect-status-text">采集空闲</span>
+                    <span id="collect-status-percent" class="mono">0%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="collect-status-fill"></div></div>
+                <div id="collect-status-msg" class="collect-status-msg">等待开始采集</div>
+            </div>
+            <div id="backend-status" class="backend-status backend-checking backend-control" title="检测本地后端连接中">
+                <span class="backend-dot"></span>
+                <span id="backend-status-text">后端检测中</span>
+            </div>
+            <button class="btn-action" onclick="toggleFloatingProgressWindow()">进度窗</button>
+            <button class="btn-action" id="backend-panel-toggle-btn" onclick="toggleBackendPanelVisibility()">隐藏后端</button>
+            <button class="btn-action backend-control" id="backend-connect-btn" onclick="toggleBackendConnection()">断开后端</button>
+            <button class="btn-action backend-control" id="backend-oneclick-install-btn" onclick="installOneClickBackend()" style="display:none">安装一键连接（推荐）</button>
+            <button class="btn-action backend-control" onclick="openRuntimeLogModal()">运行日志</button>
+            <button class="btn-action" id="repair-history-btn" onclick="refreshHistoricalInfoWithPolicyPicker()">更新历史信息</button>
+            <button class="btn-action" onclick="openManualForm()">手动新增</button>
+            <button class="btn-action" onclick="openCommunityPriceModal()">小区均价</button>
+            <button class="btn-action btn-primary" onclick="openCollectModal()">自动采集</button>
+        </div>
+    </header>
+
+    <div class="table-container">
+        <table id="main-table">
+            <thead>
+                <tr>
+                    <th style="width:36px"><input type="checkbox" id="main-all" onchange="mainToggleAll(this.checked)"></th>
+                    <th onclick="setSort('id')">编号</th>
+                    <th onclick="setSort('community')">小区名称</th>
+                    <th onclick="setSort('region')">区域</th>
+                    <th onclick="setSort('totalPrice')">总价(万)</th>
+                    <th onclick="setSort('unitPrice')">单价(元)</th>
+                    <th>面积(㎡)</th>
+                    <th>户型</th>
+                    <th>装修</th>
+                    <th>朝向</th>
+                    <th>楼层</th>
+                    <th onclick="setSort('date')">采集时间</th>
+                    <th>核验</th>
+                    <th style="text-align:right">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+</main>
+
+<!-- ========== 采集面板 ========== -->
+<div class="modal-bg" id="collect-modal">
+    <div class="modal">
+        <div class="modal-hd">
+            <div>
+                <div class="modal-title">自动采集</div>
+                <div class="modal-sub">从安居客 / 58 同城吕梁站抓取最新二手房（需本地后端）</div>
+            </div>
+            <button class="modal-x" onclick="closeCollectModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="collect-body">
+            <div id="collect-backend-warn" class="alert alert-warn" style="display:none">
+                未检测到本地后端服务（127.0.0.1:8765）。
+                请双击工程目录下的 <b>start.bat</b>（Windows）或运行 <b>bash start.sh</b>（macOS/Linux）启动后端，再重试。
+            </div>
+            <div id="collect-form">
+                <div class="form-section">
+                    <div class="form-section-label">数据来源（可多选）</div>
+                    <div class="pill-group">
+                        <label class="pill"><input type="checkbox" name="cf-platform" value="anjuke" checked> 安居客</label>
+                        <label class="pill"><input type="checkbox" name="cf-platform" value="58" checked> 58 同城</label>
+                    </div>
+                    <div class="modal-sub" id="cf-platform-check" style="margin-top:6px"></div>
+                </div>
+                <div class="form-section">
+                    <div class="form-section-label">平台域名（可改）</div>
+                    <div class="form-grid">
+                        <div>
+                            <input type="text" id="cf-host-anjuke" class="inp" placeholder="如 lvliang.anjuke.com">
+                            <div class="modal-sub" style="margin-top:4px">安居客域名</div>
+                        </div>
+                        <div>
+                            <input type="text" id="cf-host-58" class="inp" placeholder="如 lvliang.58.com">
+                            <div class="modal-sub" style="margin-top:4px">58 域名</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <div class="form-section-label">行政区（不选 = 全部区域）</div>
+                    <div class="pill-group" id="cf-region-pills"></div>
+                </div>
+                <div class="form-section">
+                    <div class="form-section-label">采集条数 / 时间范围</div>
+                    <div class="form-grid">
+                        <div>
+                            <input type="number" id="cf-target" class="inp" min="10" max="100" value="80">
+                            <div class="modal-sub" style="margin-top:4px">建议 50-100，单次硬上限 100</div>
+                        </div>
+                        <div>
+                            <select id="cf-since" class="inp">
+                                <option value="1">仅今日新发布 / 更新</option>
+                                <option value="7" selected>近 7 天</option>
+                                <option value="30">近 30 天</option>
+                                <option value="180">近半年</option>
+                                <option value="365">近一年</option>
+                                <option value="1095">近三年</option>
+                                <option value="1825">近五年</option>
+                                <option value="0">不限时间（全量翻页）</option>
+                            </select>
+                            <div class="modal-sub" style="margin-top:4px">若今日无更新会提示</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <label class="pill">
+                        <input type="checkbox" id="cf-fixed-window" checked>
+                        固定窗口低频模式（推荐，单页采集，减少频繁刷新）
+                    </label>
+                    <div class="modal-sub" id="cf-fixed-window-hint" style="margin-top:6px"></div>
+                </div>
+                <div class="form-section">
+                    <div class="form-section-label">节流设置（测试可调低）</div>
+                    <div class="form-grid">
+                        <div>
+                            <input type="number" id="cf-throttle-seconds" class="inp" min="0" max="30" step="0.5" value="3">
+                            <div class="modal-sub" style="margin-top:4px">翻页节流时间（秒），系统会自动加入随机停顿与行为抖动</div>
+                        </div>
+                    </div>
+                    <div class="form-grid" style="margin-top:8px">
+                        <div>
+                            <input type="number" id="cf-cooldown-seconds" class="inp" min="0" max="1800" step="5" value="300">
+                            <div class="modal-sub" style="margin-top:4px">前端再次发起采集冷却（秒）</div>
+                        </div>
+                        <div>
+                            <input type="number" id="cf-risk-wait" class="inp" min="60" max="1800" step="10" value="300">
+                            <div class="modal-sub" style="margin-top:4px">验证码/风控等待时长（秒）</div>
+                        </div>
+                    </div>
+                    <div class="form-grid" style="margin-top:8px">
+                        <div>
+                            <label class="pill">
+                                <input type="checkbox" id="cf-auto-retry">
+                                失败自动重试 1 次
+                            </label>
+                            <div class="modal-sub" style="margin-top:4px">仅在本次采集失败时自动重跑一次</div>
+                        </div>
+                        <div>
+                            <input type="number" id="cf-retry-delay" class="inp" min="1" max="300" step="1" value="5">
+                            <div class="modal-sub" style="margin-top:4px">重试前等待（秒）</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px">
+                        <label class="pill">
+                            <input type="checkbox" id="cf-auto-downgrade-58-ephemeral" checked>
+                            58 启动失败时自动降级无持久会话（不复用登录态）
+                        </label>
+                        <div class="modal-sub" style="margin-top:4px">用于规避 58 浏览器用户目录损坏/占用导致的启动崩溃</div>
+                    </div>
+                    <div style="margin-top:8px">
+                        <label class="pill">
+                            <input type="checkbox" id="cf-manual-region-confirm-58" checked>
+                            58 采集前需人工选区并点击“开始采集”
+                        </label>
+                        <div class="modal-sub" style="margin-top:4px">开启后更准确；关闭后全自动更快</div>
+                    </div>
+                    <div style="margin-top:8px">
+                        <select id="cf-anti-detection-level" class="inp">
+                            <option value="low">反反爬强度：低（更快）</option>
+                            <option value="medium" selected>反反爬强度：中（推荐）</option>
+                            <option value="high">反反爬强度：高（更稳）</option>
+                        </select>
+                        <div class="modal-sub" style="margin-top:4px">强度越高，越接近真人浏览行为，但采集耗时也会增加</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="collect-progress" class="progress-wrap" style="display:none">
+                <div class="progress-msg" id="cf-msg">启动中 ...</div>
+                <div class="progress-bar"><div class="progress-fill" id="cf-fill"></div></div>
+            </div>
+        </div>
+        <div class="modal-ft">
+            <div class="modal-ft-info" id="cf-cooldown"></div>
+            <button class="btn-action" id="cf-cancel-btn" onclick="closeCollectModal()">关闭</button>
+            <button class="btn-action btn-danger" id="cf-reset-topup-btn" onclick="startRealTopup(true)">清空并真实重采</button>
+            <button class="btn-action" id="cf-topup-btn" onclick="startRealTopup()">真实补齐每区50条</button>
+            <button class="btn-action btn-primary" id="cf-start-btn" onclick="startCollect()">开始采集</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 小区均价面板（独立于主采集） ========== -->
+<div class="modal-bg" id="community-price-modal">
+    <div class="modal lg" style="max-width:980px">
+        <div class="modal-hd">
+            <div>
+                <div class="modal-title">小区均价（月度折线）</div>
+                <div class="modal-sub">独立采集 58 小区均价，并按月份展示趋势</div>
+            </div>
+            <button class="modal-x" onclick="closeCommunityPriceModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <div>
+                    <div class="form-section-label">采集入口 URL</div>
+                    <input type="text" id="cp-start-url" class="inp" value="https://lvliang.58.com/xiaoqu/">
+                </div>
+                <div>
+                    <div class="form-section-label">最大页数</div>
+                    <input type="number" id="cp-max-pages" class="inp" min="1" max="20" value="6">
+                </div>
+            </div>
+            <div class="form-grid" style="margin-top:8px">
+                <div>
+                    <div class="form-section-label">验证码等待（秒）</div>
+                    <input type="number" id="cp-risk-wait" class="inp" min="60" max="1800" value="180">
+                </div>
+                <div>
+                    <div class="form-section-label">反反爬强度</div>
+                    <select id="cp-anti-level" class="inp">
+                        <option value="low">低（更快）</option>
+                        <option value="medium" selected>中（推荐）</option>
+                        <option value="high">高（更稳）</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-grid" style="margin-top:8px">
+                <div>
+                    <div class="form-section-label">图表范围</div>
+                    <select id="cp-community-filter" class="inp" onchange="renderCommunityPricePanel()">
+                        <option value="">全部小区（全局均价）</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="form-section-label">状态</div>
+                    <div id="cp-status" class="modal-sub" style="padding-top:8px">等待采集</div>
+                </div>
+            </div>
+            <div style="margin-top:12px; border:1px solid var(--border); border-radius:8px; background:#fff; padding:8px;">
+                <svg id="cp-chart" viewBox="0 0 760 280" style="width:100%; height:280px; display:block;">
+                    <text x="50%" y="50%" text-anchor="middle" fill="#94a3b8" font-size="14">暂无月度数据</text>
+                </svg>
+            </div>
+            <div class="table-container" style="padding:12px 0 0 0; max-height:260px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:120px">月份</th>
+                            <th>小区</th>
+                            <th style="width:100px">区域</th>
+                            <th style="width:120px">均价(元/㎡)</th>
+                            <th style="width:180px">采集时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cp-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-ft">
+            <button class="btn-action" onclick="closeCommunityPriceModal()">关闭</button>
+            <button class="btn-action btn-primary" id="cp-start-btn" onclick="startCommunityPriceCollect()">开始采集</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 校对面板 ========== -->
+<div class="modal-bg" id="review-modal">
+    <div class="modal lg">
+        <div class="modal-hd">
+            <div>
+                <div class="modal-title">校对入库</div>
+                <div class="modal-sub" id="rv-summary">--</div>
+            </div>
+            <button class="modal-x" onclick="closeReviewModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:0; overflow-x:auto">
+            <table class="review-table" id="rv-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px"><input type="checkbox" id="rv-all" onchange="reviewToggleAll(this.checked)"></th>
+                        <th style="width:90px">平台</th>
+                        <th style="min-width:120px">小区</th>
+                        <th style="width:100px">区域</th>
+                        <th style="width:80px">总价(万)</th>
+                        <th style="width:90px">单价(元)</th>
+                        <th style="width:70px">面积(㎡)</th>
+                        <th style="width:95px">户型</th>
+                        <th style="width:85px">装修</th>
+                        <th style="width:70px">朝向</th>
+                        <th style="width:90px">楼层</th>
+                        <th style="width:60px">状态</th>
+                        <th style="width:50px">原文</th>
+                    </tr>
+                </thead>
+                <tbody id="rv-tbody"></tbody>
+            </table>
+        </div>
+        <div class="modal-ft">
+            <div class="modal-ft-info" id="rv-info">--</div>
+            <button class="btn-action" onclick="reviewSelectNonDup()">仅选非重复</button>
+            <button class="btn-action" onclick="closeReviewModal()">取消</button>
+            <button class="btn-action btn-primary" onclick="reviewCommit()">批量入库</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 运行日志 ========== -->
+<div class="modal-bg" id="runtime-log-modal">
+    <div class="modal lg">
+        <div class="modal-hd">
+            <div>
+                <div class="modal-title">后端运行日志</div>
+                <div class="modal-sub" id="runtime-log-sub">每 2 秒自动刷新</div>
+            </div>
+            <button class="modal-x" onclick="closeRuntimeLogModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:0">
+            <pre id="runtime-log-content" style="margin:0; padding:14px; max-height:420px; overflow:auto; background:#0f172a; color:#e2e8f0; font-size:12px; line-height:1.45;">--</pre>
+        </div>
+        <div class="modal-ft">
+            <div class="modal-ft-info">
+                仅展示最近 300 条
+                <select id="runtime-log-level" class="inp" style="margin-left:8px; width:auto; display:inline-block;" onchange="setRuntimeLogLevel(this.value)">
+                    <option value="all">全部</option>
+                    <option value="warn_error">仅警告+错误</option>
+                    <option value="error">仅错误</option>
+                </select>
+            </div>
+            <button class="btn-action" onclick="refreshRuntimeLogs()">刷新</button>
+            <button class="btn-action" onclick="closeRuntimeLogModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 采集成功提示 ========== -->
+<div class="modal-bg" id="collect-success-modal">
+    <div class="modal" style="max-width:520px">
+        <div class="modal-hd">
+            <div>
+                <div class="modal-title">采集成功</div>
+                <div class="modal-sub">本次采集任务已完成并入库</div>
+            </div>
+            <button class="modal-x" onclick="closeCollectSuccessModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="collect-success-note" id="collect-success-text">--</div>
+        </div>
+        <div class="modal-ft">
+            <button class="btn-action btn-primary" onclick="closeCollectSuccessModal()">知道了</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 回查未识别列表 ========== -->
+<div class="modal-bg" id="decoration-failed-modal">
+    <div class="modal lg">
+        <div class="modal-hd">
+            <div>
+                <div class="modal-title">回查未识别装修列表</div>
+                <div class="modal-sub" id="decoration-failed-sub">--</div>
+            </div>
+            <button class="modal-x" onclick="closeDecorationFailedModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:0; overflow-x:auto">
+            <table class="review-table">
+                <thead>
+                    <tr>
+                        <th style="width:180px">编号</th>
+                        <th style="min-width:360px">链接</th>
+                        <th style="min-width:220px">原因</th>
+                    </tr>
+                </thead>
+                <tbody id="decoration-failed-tbody"></tbody>
+            </table>
+        </div>
+        <div class="modal-ft">
+            <button class="btn-action" id="failed-retry-btn" onclick="retryDecorationFailedItems()">失败项一键复识别</button>
+            <button class="btn-action" onclick="closeDecorationFailedModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 手动新增 ========== -->
+<div class="modal-bg" id="manual-modal">
+    <div class="modal">
+        <div class="modal-hd">
+            <div>
+                <div class="modal-title" id="manual-modal-title">手动新增房源</div>
+                <div class="modal-sub" id="manual-modal-sub">填写后会立即入库到本地 IndexedDB</div>
+            </div>
+            <button class="modal-x" onclick="closeManualForm()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <div>
+                    <div class="form-section-label">小区 *</div>
+                    <input class="inp" id="mf-community" placeholder="如：时代中心">
+                </div>
+                <div>
+                    <div class="form-section-label">行政区 *</div>
+                    <select class="inp" id="mf-region">
+                        <option value="离石">离石</option>
+                        <option value="孝义">孝义</option>
+                        <option value="汾阳">汾阳</option>
+                        <option value="文水">文水</option>
+                        <option value="临县">临县</option>
+                        <option value="交城">交城</option>
+                        <option value="柳林">柳林</option>
+                        <option value="中阳">中阳</option>
+                        <option value="方山县">方山县</option>
+                        <option value="岚县">岚县</option>
+                        <option value="交口县">交口县</option>
+                        <option value="兴县">兴县</option>
+                        <option value="石楼县">石楼县</option>
+                        <option value="吕梁周边">吕梁周边</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="form-section-label">总价 (万) *</div>
+                    <input type="number" class="inp" id="mf-totalPrice" step="0.1" placeholder="如：57">
+                </div>
+                <div>
+                    <div class="form-section-label">面积 (㎡) *</div>
+                    <input type="number" class="inp" id="mf-area" step="0.1" placeholder="如：105">
+                </div>
+                <div>
+                    <div class="form-section-label">单价 (元/㎡, 留空自动算)</div>
+                    <input type="number" class="inp" id="mf-unitPrice" placeholder="自动: 总价×1万÷面积">
+                </div>
+                <div>
+                    <div class="form-section-label">户型</div>
+                    <input class="inp" id="mf-layout" placeholder="如：3室2厅1卫">
+                </div>
+                <div>
+                    <div class="form-section-label">装修</div>
+                    <select class="inp" id="mf-decoration">
+                        <option value="">未填写</option>
+                        <option value="豪装">豪装</option>
+                        <option value="精装">精装</option>
+                        <option value="简装">简装</option>
+                        <option value="毛坯">毛坯</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="form-section-label">朝向</div>
+                    <input class="inp" id="mf-orientation" placeholder="如：南北">
+                </div>
+                <div>
+                    <div class="form-section-label">楼层</div>
+                    <input class="inp" id="mf-floor" placeholder="如：5/15 或 中层/15">
+                </div>
+                <div class="full">
+                    <div class="form-section-label">原文链接（可选）</div>
+                    <input class="inp" id="mf-sourceUrl" placeholder="https://...">
+                </div>
+            </div>
+            <div id="mf-error" class="alert alert-danger" style="display:none; margin-top:14px"></div>
+        </div>
+        <div class="modal-ft">
+            <button class="btn-action" onclick="closeManualForm()">取消</button>
+            <button class="btn-action btn-primary" id="manual-submit-btn" onclick="manualSubmit()">保存到库</button>
+        </div>
+    </div>
+</div>
+
+<div id="floating-progress" class="floating-progress hidden" aria-live="polite">
+    <div class="floating-progress-head" id="floating-progress-head">
+        <div class="floating-progress-title" id="floating-progress-title">采集进度</div>
+        <div class="floating-progress-actions">
+            <button id="floating-progress-min-btn" class="floating-progress-btn" title="最小化">-</button>
+            <button id="floating-progress-close-btn" class="floating-progress-btn" title="隐藏">x</button>
+        </div>
+    </div>
+    <div class="floating-progress-body">
+        <div class="floating-progress-meta">
+            <span id="floating-progress-state">等待中</span>
+            <span id="floating-progress-percent" class="floating-progress-percent">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="floating-progress-fill"></div></div>
+        <div id="floating-progress-msg" class="floating-progress-msg">等待开始采集</div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========================================================================
+ * 配置
+ * ====================================================================== */
+function normalizeBackendUrl(raw) {
+    const txt = String(raw || '').trim();
+    if (!txt) return '';
+    // Allow `host:port` shorthand.
+    const withProto = /^https?:\/\//i.test(txt) ? txt : `http://${txt}`;
+    try {
+        return new URL(withProto).origin;
+    } catch (_) {
+        return '';
+    }
+}
+
+const BACKEND_QUERY_KEY = 'backend';
+const BACKEND_PORT = '8765';
+const backendFromQuery = new URLSearchParams(location.search).get(BACKEND_QUERY_KEY);
+const backendFromStorage = localStorage.getItem('vault_pro_backend_url');
+const defaultBackendHost = location.hostname || '127.0.0.1';
+const BACKEND_URL = normalizeBackendUrl(backendFromQuery)
+    || normalizeBackendUrl(backendFromStorage)
+    || `http://${defaultBackendHost}:${BACKEND_PORT}`;
+const DEFAULT_COOLDOWN_MS = 5 * 60 * 1000;
+const POLL_INTERVAL  = 1500;              // 轮询周期 (ms)
+const POLL_TIMEOUT   = 5 * 60 * 1000;     // 单次任务最长等待 (ms)
+const RISK_CONTROL_RE = /访问过于频繁|访问频繁|异常访问|安全验证|人机验证|验证码|滑动验证|请完成验证|captcha|verify/i;
+const FIXED_WINDOW_KEY = 'vault_pro_fixed_window_mode';
+const THROTTLE_SECONDS_KEY = 'vault_pro_throttle_seconds';
+const COOLDOWN_SECONDS_KEY = 'vault_pro_collect_cooldown_seconds';
+const RISK_WAIT_SECONDS_KEY = 'vault_pro_risk_wait_seconds';
+const AUTO_RETRY_KEY = 'vault_pro_collect_auto_retry';
+const RETRY_DELAY_SECONDS_KEY = 'vault_pro_collect_retry_delay_seconds';
+const AUTO_DOWNGRADE_58_EPHEMERAL_KEY = 'vault_pro_auto_downgrade_58_ephemeral';
+const MANUAL_REGION_CONFIRM_58_KEY = 'vault_pro_manual_region_confirm_58';
+const ANTI_DETECTION_LEVEL_KEY = 'vault_pro_anti_detection_level';
+const ONECLICK_GUIDE_SHOWN_KEY = 'vault_pro_oneclick_guide_shown';
+const RUNTIME_LOG_LEVEL_KEY = 'vault_pro_runtime_log_level';
+const FLOATING_PROGRESS_POS_KEY = 'vault_pro_floating_progress_pos';
+const BACKEND_AUTO_CONNECT_KEY = 'vault_pro_backend_auto_connect';
+const BACKEND_PANEL_HIDDEN_KEY = 'vault_pro_backend_panel_hidden';
+const DECORATION_BACKFILL_POLICY_KEY = 'vault_pro_decoration_backfill_policy';
+const BATCH_REPAIR_AUTO_OPEN_KEY = 'vault_pro_batch_repair_auto_open_source';
+const BATCH_REPAIR_OPEN_FAILED_ONLY_KEY = 'vault_pro_batch_repair_open_failed_only';
+const COMMUNITY_PRICE_HISTORY_KEY = 'vault_pro_community_price_history_v1';
+const COMMUNITY_PRICE_MAX_PAGES_KEY = 'vault_pro_community_price_max_pages';
+const COMMUNITY_PRICE_RISK_WAIT_KEY = 'vault_pro_community_price_risk_wait';
+const COMMUNITY_PRICE_ANTI_LEVEL_KEY = 'vault_pro_community_price_anti_level';
+
+const DEFAULT_PLATFORM_HOSTS = {
+    anjuke: 'lvliang.anjuke.com',
+    '58': 'lvliang.58.com',
+};
+
+const REGIONS = [
+    '离石','孝义','汾阳','文水','临县','交城','柳林',
+    '中阳','方山县','岚县','交口县','兴县','石楼县','吕梁周边'
+];
+
+const BENCHMARKS = {
+    '离石': 5200, '孝义': 5000, '汾阳': 4300,
+    '文水': 3800, '交城': 4100, '兴县': 3500,
+    '临县': 3200, '柳林': 4500, '石楼县': 3000,
+    '岚县': 3100, '方山县': 3200, '中阳': 3600, '交口县': 3000,
+    '吕梁周边': 3200
+};
+
+/* ========================================================================
+ * IndexedDB 封装
+ * ====================================================================== */
+const DB_NAME = 'vault_pro_db';
+const DB_VERSION = 1;
+const STORE = 'properties';
+
+const db = {
+    _instance: null,
+
+    async init() {
+        if (this._instance) return this._instance;
+        this._instance = await new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = (e) => {
+                const idb = e.target.result;
+                if (!idb.objectStoreNames.contains(STORE)) {
+                    const store = idb.createObjectStore(STORE, { keyPath: 'id' });
+                    store.createIndex('region',  'region',  { unique: false });
+                    store.createIndex('date',    'date',    { unique: false });
+                    store.createIndex('hashKey', 'hashKey', { unique: false });
+                }
+            };
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror   = (e) => reject(e.target.error);
+        });
+        return this._instance;
+    },
+
+    async _tx(mode) {
+        const idb = await this.init();
+        return idb.transaction(STORE, mode).objectStore(STORE);
+    },
+
+    async getAll() {
+        const store = await this._tx('readonly');
+        return new Promise((res, rej) => {
+            const r = store.getAll();
+            r.onsuccess = () => res(r.result || []);
+            r.onerror   = () => rej(r.error);
+        });
+    },
+
+    async getOne(id) {
+        const store = await this._tx('readonly');
+        return new Promise((res, rej) => {
+            const r = store.get(id);
+            r.onsuccess = () => res(r.result || null);
+            r.onerror = () => rej(r.error);
+        });
+    },
+
+    async getHashSet() {
+        const all = await this.getAll();
+        return new Set(all.map(r => r.hashKey).filter(Boolean));
+    },
+
+    async addMany(records) {
+        const store = await this._tx('readwrite');
+        return new Promise((res, rej) => {
+            let pending = records.length;
+            if (pending === 0) return res(0);
+            let added = 0;
+            for (const rec of records) {
+                const r = store.put(rec);
+                r.onsuccess = () => { added++; if (--pending === 0) res(added); };
+                r.onerror   = () => { if (--pending === 0) res(added); };
+            }
+        });
+    },
+
+    async addOne(rec) {
+        return this.addMany([rec]);
+    },
+
+    async delete(id) {
+        const store = await this._tx('readwrite');
+        return new Promise((res, rej) => {
+            const r = store.delete(id);
+            r.onsuccess = () => res();
+            r.onerror   = () => rej(r.error);
+        });
+    },
+
+    async clear() {
+        const store = await this._tx('readwrite');
+        return new Promise((res, rej) => {
+            const r = store.clear();
+            r.onsuccess = () => res();
+            r.onerror   = () => rej(r.error);
+        });
+    },
+};
+
+/* ========================================================================
+ * localStorage -> IndexedDB 一次性迁移（仅迁移旧库，不再注入样例）
+ * ====================================================================== */
+const LEGACY_KEY = 'vault_pro_v2';
+const MIGRATION_FLAG = 'vault_pro_v3_migrated';
+const AREA_REPAIR_FLAG = 'vault_pro_area_repair_v1_done';
+const META_REPAIR_FLAG = 'vault_pro_meta_repair_v3_done';
+
+async function maybeMigrate() {
+    if (localStorage.getItem(MIGRATION_FLAG) === 'done') return;
+
+    const all = await db.getAll();
+    if (all.length > 0) {
+        localStorage.setItem(MIGRATION_FLAG, 'done');
+        return;
+    }
+
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (!legacy) {
+        localStorage.setItem(MIGRATION_FLAG, 'done');
+        return;
+    }
+
+    let migrated = [];
+    try {
+        migrated = JSON.parse(legacy) || [];
+    } catch (_) {
+        migrated = [];
+    }
+    if (!Array.isArray(migrated) || migrated.length === 0) {
+        localStorage.removeItem(LEGACY_KEY);
+        localStorage.setItem(MIGRATION_FLAG, 'done');
+        return;
+    }
+    const enriched = migrated.map(r => ({
+        ...r,
+        hashKey: makeHash(r.community, r.area, r.totalPrice, r.floor),
+        platform: r.platform || 'manual',
+    }));
+    await db.addMany(enriched);
+
+    localStorage.removeItem(LEGACY_KEY);
+    localStorage.setItem(MIGRATION_FLAG, 'done');
+}
+
+function calcAreaFromPrice(totalPrice, unitPrice) {
+    const total = +totalPrice || 0;
+    const unit = +unitPrice || 0;
+    if (!total || !unit) return 0;
+    const area = total * 10000 / unit;
+    if (!isFinite(area) || area <= 0) return 0;
+    return +area.toFixed(1);
+}
+
+function shouldRepairArea(currentArea, estimatedArea) {
+    const cur = +currentArea || 0;
+    const est = +estimatedArea || 0;
+    if (!est || est < 8 || est > 1500) return false;
+    if (!cur || cur < 8 || cur > 1500) return true;
+    const drift = Math.abs(cur - est) / est;
+    return drift >= 0.35;
+}
+
+async function maybeRepairHistoricalArea(force = false) {
+    if (!force && localStorage.getItem(AREA_REPAIR_FLAG) === 'done') {
+        return { scanned: 0, planned: 0, written: 0 };
+    }
+    const all = await db.getAll();
+    const fixed = [];
+    for (const rec of all) {
+        const platform = String(rec.platform || '').trim();
+        // 不动手工录入，只修历史自动采集数据。
+        if (!platform || platform === 'manual') continue;
+        const estimatedArea = calcAreaFromPrice(rec.totalPrice, rec.unitPrice);
+        if (!shouldRepairArea(rec.area, estimatedArea)) continue;
+        const next = {
+            ...rec,
+            area: estimatedArea,
+            hashKey: makeHash(rec.community, estimatedArea, rec.totalPrice, rec.floor),
+        };
+        fixed.push(next);
+    }
+    let written = 0;
+    if (fixed.length > 0) {
+        written = await db.addMany(fixed);
+    }
+    localStorage.setItem(AREA_REPAIR_FLAG, 'done');
+    return { scanned: all.length, planned: fixed.length, written };
+}
+
+function normalizeLayout(raw) {
+    const txt = String(raw || '').replace(/\s+/g, '');
+    if (!txt) return '';
+    const m = txt.match(/(\d+)室(\d+)厅(?:(\d+)卫)?/);
+    if (m) {
+        const shi = parseInt(m[1], 10) || 0;
+        const ting = m[2];
+        const wei = m[3] || '';
+        if (wei) return `${shi}室${ting}厅${wei}卫`;
+        // 历史数据常缺失“卫”，按常见户型做保守补全，避免仅显示“x室x厅”。
+        const inferredWei = shi >= 5 ? 3 : (shi >= 3 ? 2 : 1);
+        return `${shi}室${ting}厅${inferredWei}卫`;
+    }
+    return txt.slice(0, 8);
+}
+
+async function maybeRepairHistoricalMeta(force = false) {
+    if (!force && localStorage.getItem(META_REPAIR_FLAG) === 'done') {
+        return {
+            scanned: 0,
+            planned: 0,
+            written: 0,
+            layoutChanged: 0,
+            decorationChanged: 0,
+            orientationChanged: 0,
+            decorationUnknown: 0,
+        };
+    }
+    const all = await db.getAll();
+    const fixed = [];
+    let layoutChanged = 0;
+    let decorationChanged = 0;
+    let orientationChanged = 0;
+    let decorationUnknown = 0;
+    for (const rec of all) {
+        const nextLayout = normalizeLayout(rec.layout || '');
+        const isManual = String(rec.platform || '').trim() === 'manual';
+        const nextDecoration = inferDecoration(rec);
+        if (!isManual && !nextDecoration && !normalizeDecoration(rec.decoration || '')) {
+            decorationUnknown += 1;
+        }
+        const nextOrientation = inferOrientation(rec);
+        const layoutDiff = nextLayout !== (rec.layout || '');
+        const decorationDiff = nextDecoration !== (rec.decoration || '');
+        const orientationDiff = nextOrientation !== (rec.orientation || '');
+        if (
+            !layoutDiff
+            && !decorationDiff
+            && !orientationDiff
+        ) continue;
+        if (layoutDiff) layoutChanged += 1;
+        if (decorationDiff) decorationChanged += 1;
+        if (orientationDiff) orientationChanged += 1;
+        fixed.push({
+            ...rec,
+            layout: nextLayout,
+            decoration: nextDecoration,
+            orientation: nextOrientation,
+        });
+    }
+    let written = 0;
+    if (fixed.length > 0) {
+        written = await db.addMany(fixed);
+    }
+    localStorage.setItem(META_REPAIR_FLAG, 'done');
+    return {
+        scanned: all.length,
+        planned: fixed.length,
+        written,
+        layoutChanged,
+        decorationChanged,
+        orientationChanged,
+        decorationUnknown,
+    };
+}
+
+function getDecorationPolicyLabel(policy) {
+    const normalized = normalizeDecorationBackfillPolicy(policy);
+    if (normalized === 'safe') return '稳健';
+    if (normalized === 'fast') return '快速';
+    return '均衡';
+}
+
+function pickDecorationBackfillPolicy() {
+    const currentPolicy = getDecorationBackfillPolicy();
+    const currentLabel = getDecorationPolicyLabel(currentPolicy);
+    const raw = window.prompt(
+        `请选择本次历史回查策略：\n` +
+        `1=稳健（更慢、风控更低）\n` +
+        `2=均衡（推荐）\n` +
+        `3=快速（更快、风控更高）\n\n` +
+        `直接回车：使用当前策略（${currentLabel}）`,
+        ''
+    );
+    if (raw === null) return null;
+    const txt = String(raw || '').trim().toLowerCase();
+    if (!txt) return currentPolicy;
+    if (txt === '1' || txt === 'safe' || txt.includes('稳')) return 'safe';
+    if (txt === '2' || txt === 'balanced' || txt.includes('均')) return 'balanced';
+    if (txt === '3' || txt === 'fast' || txt.includes('快')) return 'fast';
+    return currentPolicy;
+}
+
+async function refreshHistoricalInfoWithPolicyPicker() {
+    const selectedPolicy = pickDecorationBackfillPolicy();
+    if (!selectedPolicy) return;
+    onDecorationBackfillPolicyChange(selectedPolicy);
+    await refreshHistoricalInfo({ policy: selectedPolicy });
+}
+
+async function refreshHistoricalInfo(options = {}) {
+    const selectedPolicy = normalizeDecorationBackfillPolicy(options.policy || getDecorationBackfillPolicy());
+    const btn = document.getElementById('repair-history-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '更新中（扫描历史数据）...';
+    }
+    try {
+        const areaStats = await maybeRepairHistoricalArea(true);
+        if (btn) btn.textContent = '更新中（写入户型/装修/朝向）...';
+        const metaStats = await maybeRepairHistoricalMeta(true);
+        let decoBackfill = null;
+        if ((metaStats.decorationUnknown || 0) > 0) {
+            if (btn) btn.textContent = '更新中（自动回查装修缺失）...';
+            decoBackfill = await runDecorationBackfill({
+                title: '历史回查进度',
+                statePrefix: '历史回查',
+                openFailedModal: false,
+                policy: selectedPolicy,
+            });
+        }
+        await render();
+        const totalWritten = (areaStats.written || 0) + (metaStats.written || 0);
+        const backfillWritten = decoBackfill ? (decoBackfill.written || 0) : 0;
+        const backfillFailed = decoBackfill ? (decoBackfill.failedCount || 0) : 0;
+        const backfillBlocked = decoBackfill ? (decoBackfill.blockedCount || 0) : 0;
+        const backfillLoginRequired = decoBackfill ? (decoBackfill.loginRequiredCount || 0) : 0;
+        const backfillUnrecognized = decoBackfill ? (decoBackfill.unrecognizedCount || 0) : 0;
+        const remainUnknown = decoBackfill
+            ? Math.max(0, (decoBackfill.candidates || 0) - (decoBackfill.written || 0))
+            : (metaStats.decorationUnknown || 0);
+        const backfillHint = decoBackfill
+            ? `；自动回查补齐装修 ${backfillWritten} 条，失败 ${backfillFailed} 条（风控 ${backfillBlocked} / 登录限制 ${backfillLoginRequired} / 纯未识别 ${backfillUnrecognized}）`
+            : '';
+        if (totalWritten <= 0) {
+            const unknownHint = remainUnknown > 0
+                ? `；其中 ${remainUnknown} 条装修仍缺少可识别证据`
+                : '';
+            toast(`历史信息扫描完成：未发现可更新项${backfillHint}${unknownHint}`, 'success');
+        } else {
+            const unknownHint = remainUnknown > 0
+                ? `；另有 ${remainUnknown} 条装修仍缺少可识别证据`
+                : '';
+            toast(
+                `历史信息更新完成：面积修正 ${areaStats.written} 条；` +
+                `元数据更新 ${metaStats.written} 条（户型 ${metaStats.layoutChanged} / 装修 ${metaStats.decorationChanged} / 朝向 ${metaStats.orientationChanged}）` +
+                backfillHint +
+                unknownHint,
+                'success'
+            );
+        }
+    } catch (err) {
+        const msg = err && err.message ? err.message : String(err);
+        toast(`历史信息更新失败：${msg}`, 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '更新历史信息';
+        }
+    }
+}
+
+async function runDecorationBackfill(options = {}) {
+    const title = String(options.title || '回查进度');
+    const statePrefix = String(options.statePrefix || '回查');
+    const openFailedModal = !!options.openFailedModal;
+    const classifyFailedItems = (items) => {
+        const stats = { blocked: 0, loginRequired: 0, unrecognized: 0 };
+        (items || []).forEach((it) => {
+            const reason = String(it && it.reason ? it.reason : '');
+            if (/风控|反爬|访问频繁|人机验证|验证码|拦截/i.test(reason)) {
+                stats.blocked += 1;
+            } else if (/登录|登录后|请先登录/i.test(reason)) {
+                stats.loginRequired += 1;
+            } else {
+                stats.unrecognized += 1;
+            }
+        });
+        return stats;
+    };
+    const totalSteps = 5;
+    const stageLabels = [
+        '检查后端',
+        '扫描本地数据',
+        '筛选回查候选',
+        '请求后端回查',
+        '写回本地库',
+    ];
+    const setRepairProgress = (stepIndex, detail, kind) => {
+        const safeStep = Math.max(1, Math.min(totalSteps, stepIndex));
+        const ratio = Math.max(0.01, Math.min(1, safeStep / totalSteps));
+        const stage = stageLabels[safeStep - 1] || stageLabels[stageLabels.length - 1];
+        const stateText = kind === 'danger'
+            ? `${statePrefix}失败`
+            : (kind === 'success' ? `${statePrefix}完成` : `${statePrefix}中（${safeStep}/${totalSteps}）`);
+        updateFloatingProgress(
+            ratio,
+            `【${safeStep}/${totalSteps}】${stage}${detail ? `：${detail}` : ''}`,
+            kind,
+            {
+                forceShow: true,
+                title,
+                stateText,
+            }
+        );
+    };
+
+    setRepairProgress(1, '正在检查本地后端连接');
+    const ok = await pingBackend();
+    if (!ok) {
+        setRepairProgress(1, '未检测到本地后端', 'danger');
+        throw new Error('未检测到本地后端，无法回查装修');
+    }
+
+    setRepairProgress(2, '正在扫描本地记录');
+    const all = await db.getAll();
+    setRepairProgress(3, `共扫描 ${all.length} 条，正在筛选可回查记录`);
+    const candidates = all.filter((rec) => {
+        const isManual = String(rec.platform || '').trim() === 'manual';
+        const hasDeco = !!inferDecoration(rec);
+        const src = String(rec.sourceUrl || '').trim();
+        return !isManual && !hasDeco && /^https?:\/\//i.test(src);
+    });
+    if (candidates.length === 0) {
+        setRepairProgress(5, '没有可回查的装修缺失记录', 'success');
+        return {
+            scanned: all.length,
+            candidates: 0,
+            processed: 0,
+            written: 0,
+            failedCount: 0,
+            blockedCount: 0,
+            loginRequiredCount: 0,
+            unrecognizedCount: 0,
+            failedItems: [],
+            remaining: 0,
+        };
+    }
+
+    const policy = normalizeDecorationBackfillPolicy(options.policy || getDecorationBackfillPolicy());
+    const strategy = getDecorationBackfillStrategy(policy);
+    const maxBackfill = strategy.maxBackfill;
+    const baseChunkSize = strategy.baseChunkSize;
+    const minChunkSize = strategy.minChunkSize;
+    const pauseMs = strategy.pauseMs;
+    const batch = candidates.slice(0, maxBackfill);
+    setRepairProgress(4, `已筛选 ${candidates.length} 条，准备分批回查前 ${batch.length} 条（${strategy.label}）`);
+    const updated = [];
+    const failedItems = [];
+    let idx = 0;
+    let partNo = 0;
+    let currentChunkSize = baseChunkSize;
+    let hasDownshifted = false;
+    while (idx < batch.length) {
+        const part = batch.slice(idx, idx + currentChunkSize);
+        partNo += 1;
+        setRepairProgress(
+            4,
+            `分批回查中：第 ${partNo} 批（本批 ${part.length} 条，累计 ${Math.min(batch.length, idx + part.length)}/${batch.length}）`,
+        );
+        const payload = {
+            items: part.map((x) => ({
+                id: String(x.id || ''),
+                sourceUrl: String(x.sourceUrl || ''),
+                platform: String(x.platform || ''),
+            })),
+            timeout_seconds: strategy.timeoutSeconds,
+        };
+        const partResult = await requestDecorationRepair(payload);
+        const partUpdated = Array.isArray(partResult.updated) ? partResult.updated : [];
+        const partFailed = Array.isArray(partResult.failed) ? partResult.failed : [];
+        updated.push(...partUpdated);
+        failedItems.push(...partFailed);
+        const partFailedStats = classifyFailedItems(partFailed);
+        const blockedRate = part.length > 0 ? (partFailedStats.blocked / part.length) : 0;
+        if (!hasDownshifted && currentChunkSize > minChunkSize && blockedRate >= strategy.downshiftBlockedRate) {
+            hasDownshifted = true;
+            currentChunkSize = minChunkSize;
+            setRepairProgress(
+                4,
+                `检测到风控偏高（${Math.round(blockedRate * 100)}%），后续自动降速为每批 ${currentChunkSize} 条`,
+                'danger'
+            );
+        }
+        idx += part.length;
+        if (idx < batch.length) {
+            const waitMs = blockedRate >= strategy.downshiftBlockedRate ? Math.max(pauseMs, strategy.highRiskPauseMs) : pauseMs;
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+        }
+    }
+    const byId = new Map(all.map((x) => [String(x.id || ''), x]));
+    const changedRecords = [];
+    for (const row of updated) {
+        const id = String(row.id || '');
+        const base = byId.get(id);
+        const decoRaw = String(row.decoration_raw || row.decoration || '').trim();
+        const decoNorm = normalizeDecoration(decoRaw || row.decoration || '');
+        if (!base || !decoRaw) continue;
+        const baseRaw = String(base.decoration || '').trim();
+        if (baseRaw === decoRaw) continue;
+        if (!baseRaw && decoNorm && normalizeDecoration(baseRaw) === decoNorm) continue;
+        changedRecords.push({
+            ...base,
+            decoration: decoRaw,
+        });
+    }
+    setRepairProgress(
+        5,
+        `后端识别 ${updated.length} 条，待写回 ${changedRecords.length} 条`,
+    );
+    let written = 0;
+    if (changedRecords.length > 0) {
+        written = await db.addMany(changedRecords);
+        await render();
+    }
+    const failedCount = failedItems.length;
+    const failedStats = classifyFailedItems(failedItems);
+    if (openFailedModal && failedCount > 0) {
+        openDecorationFailedModal(failedItems);
+    }
+    setRepairProgress(
+        5,
+        `完成：更新 ${written} 条，失败 ${failedCount} 条`,
+        written > 0 ? 'success' : 'danger'
+    );
+    return {
+        scanned: all.length,
+        candidates: candidates.length,
+        processed: batch.length,
+        written,
+        failedCount,
+        blockedCount: failedStats.blocked,
+        loginRequiredCount: failedStats.loginRequired,
+        unrecognizedCount: failedStats.unrecognized,
+        failedItems,
+        remaining: Math.max(0, candidates.length - written),
+    };
+}
+
+function normalizeDecorationBackfillPolicy(raw) {
+    const txt = String(raw || '').trim().toLowerCase();
+    if (txt === 'safe' || txt === 'balanced' || txt === 'fast') return txt;
+    return 'balanced';
+}
+
+function getDecorationBackfillPolicy() {
+    const select = document.getElementById('repair-policy-select');
+    const fromUi = select ? select.value : '';
+    const fromStorage = localStorage.getItem(DECORATION_BACKFILL_POLICY_KEY) || '';
+    return normalizeDecorationBackfillPolicy(fromUi || fromStorage);
+}
+
+function getDecorationBackfillStrategy(policy) {
+    const normalized = normalizeDecorationBackfillPolicy(policy);
+    if (normalized === 'safe') {
+        return {
+            label: '稳健策略',
+            maxBackfill: 80,
+            baseChunkSize: 10,
+            minChunkSize: 8,
+            pauseMs: 1800,
+            highRiskPauseMs: 2600,
+            timeoutSeconds: 22,
+            downshiftBlockedRate: 0.25,
+        };
+    }
+    if (normalized === 'fast') {
+        return {
+            label: '快速策略',
+            maxBackfill: 120,
+            baseChunkSize: 30,
+            minChunkSize: 15,
+            pauseMs: 700,
+            highRiskPauseMs: 1400,
+            timeoutSeconds: 16,
+            downshiftBlockedRate: 0.45,
+        };
+    }
+    return {
+        label: '均衡策略',
+        maxBackfill: 120,
+        baseChunkSize: 20,
+        minChunkSize: 10,
+        pauseMs: 1100,
+        highRiskPauseMs: 1800,
+        timeoutSeconds: 18,
+        downshiftBlockedRate: 0.35,
+    };
+}
+
+function onDecorationBackfillPolicyChange(nextValue) {
+    const policy = normalizeDecorationBackfillPolicy(nextValue);
+    localStorage.setItem(DECORATION_BACKFILL_POLICY_KEY, policy);
+    const select = document.getElementById('repair-policy-select');
+    if (select) select.value = policy;
+}
+
+function initDecorationBackfillPolicyControl() {
+    const select = document.getElementById('repair-policy-select');
+    if (!select) return;
+    const policy = normalizeDecorationBackfillPolicy(
+        localStorage.getItem(DECORATION_BACKFILL_POLICY_KEY) || select.value
+    );
+    select.value = policy;
+    localStorage.setItem(DECORATION_BACKFILL_POLICY_KEY, policy);
+}
+
+function onBatchRepairAutoOpenToggle(checked) {
+    localStorage.setItem(BATCH_REPAIR_AUTO_OPEN_KEY, checked ? '1' : '0');
+}
+
+function getBatchRepairAutoOpen() {
+    return localStorage.getItem(BATCH_REPAIR_AUTO_OPEN_KEY) === '1';
+}
+
+function onBatchRepairOpenFailedOnlyToggle(checked) {
+    localStorage.setItem(BATCH_REPAIR_OPEN_FAILED_ONLY_KEY, checked ? '1' : '0');
+}
+
+function getBatchRepairOpenFailedOnly() {
+    return localStorage.getItem(BATCH_REPAIR_OPEN_FAILED_ONLY_KEY) === '1';
+}
+
+function initBatchRepairAutoOpenToggle() {
+    const elAll = document.getElementById('batch-repair-open-toggle');
+    if (elAll) elAll.checked = getBatchRepairAutoOpen();
+    const elFailed = document.getElementById('batch-repair-open-failed-only-toggle');
+    if (elFailed) elFailed.checked = getBatchRepairOpenFailedOnly();
+}
+
+function reasonCodeToHint(reasonCode) {
+    const code = String(reasonCode || '').trim();
+    if (code === 'blocked') return '风控拦截：建议降低频率、切换网络后重试';
+    if (code === 'login_required') return '登录限制：先在原文页完成登录后重试';
+    if (code === 'not_found') return '页面无可识别字段：建议人工核对后手动补录';
+    if (code === 'invalid_url') return '链接无效：请检查原文链接是否完整';
+    if (code === 'timeout') return '页面超时：稍后重试或先打开原文稳定页面';
+    if (code === 'runtime_error') return '运行环境异常：请重启后端后重试';
+    return '';
+}
+
+function openDecorationFailedModal(items) {
+    _decorationFailedItems = Array.isArray(items) ? items : [];
+    const sub = document.getElementById('decoration-failed-sub');
+    if (sub) sub.textContent = `未识别 ${_decorationFailedItems.length} 条`;
+    const tbody = document.getElementById('decoration-failed-tbody');
+    if (tbody) {
+        tbody.innerHTML = _decorationFailedItems.map((it) => `
+            <tr>
+                <td class="mono">${escapeHtml(it.id || '-')}</td>
+                <td>${
+                    it.sourceUrl
+                        ? `<a class="source-link" href="${escapeHtml(it.sourceUrl)}" target="_blank" rel="noopener noreferrer">打开原文↗</a>`
+                        : '-'
+                }</td>
+                <td>${escapeHtml(it.reason || '未识别到可用字段')}${
+                    reasonCodeToHint(it.reasonCode || it.reason_code)
+                        ? `<div style="margin-top:6px;color:var(--text-muted);font-size:12px;">${escapeHtml(reasonCodeToHint(it.reasonCode || it.reason_code))}</div>`
+                        : ''
+                }</td>
+            </tr>
+        `).join('');
+    }
+    const retryBtn = document.getElementById('failed-retry-btn');
+    if (retryBtn) {
+        retryBtn.disabled = _decorationFailedItems.length === 0;
+        retryBtn.textContent = _decorationFailedItems.length > 0
+            ? `失败项一键复识别（${_decorationFailedItems.length}）`
+            : '失败项一键复识别';
+    }
+    document.getElementById('decoration-failed-modal').classList.add('active');
+}
+
+function closeDecorationFailedModal() {
+    document.getElementById('decoration-failed-modal').classList.remove('active');
+}
+
+/* ========================================================================
+ * 工具：哈希、ID、时间戳
+ * ====================================================================== */
+function makeHash(community, area, totalPrice, floor) {
+    // 与后端 normalize.py 保持一致的字段拼接，但前端用一个简单的 32-bit FNV-1a。
+    // 不需要密码学强度，只用于去重比对。
+    const raw = `${(community||'').trim()}|${(+area||0).toFixed(1)}|${(+totalPrice||0).toFixed(1)}|${(floor||'').trim()}`;
+    let h = 0x811c9dc5;
+    for (let i = 0; i < raw.length; i++) {
+        h ^= raw.charCodeAt(i);
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+}
+
+let _manualIdCounter = 0;
+function makeManualId() {
+    _manualIdCounter = (_manualIdCounter + 1) % 1679616; // 36^4
+    const ts = Date.now().toString(36).toUpperCase();
+    const seq = _manualIdCounter.toString(36).toUpperCase().padStart(4, '0');
+    const rnd = Math.floor(Math.random() * 1679616).toString(36).toUpperCase().padStart(4, '0');
+    return `MN-${ts}-${seq}-${rnd}`;
+}
+
+function nowStr() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function buildCollectExclusionSnapshot(limit = 12000) {
+    const all = await db.getAll();
+    const hashSet = new Set();
+    const sourceSet = new Set();
+    for (const rec of all) {
+        if (hashSet.size < limit) {
+            const hash = String(
+                rec.hashKey
+                    || makeHash(rec.community, rec.area, rec.totalPrice, rec.floor)
+                    || ''
+            ).trim();
+            if (hash) hashSet.add(hash);
+        }
+        if (sourceSet.size < limit) {
+            const source = String(rec.sourceUrl || '').trim();
+            if (source) sourceSet.add(source);
+        }
+        if (hashSet.size >= limit && sourceSet.size >= limit) break;
+    }
+    return {
+        exclude_hash_keys: Array.from(hashSet),
+        exclude_source_urls: Array.from(sourceSet),
+    };
+}
+
+async function removeSyntheticRecords() {
+    const all = await db.getAll();
+    const toDelete = all.filter(r => {
+        const community = String(r.community || '').trim();
+        return r.platform === 'seed' || community.includes('补充');
+    });
+    for (const rec of toDelete) {
+        await db.delete(rec.id);
+    }
+    return toDelete.length;
+}
+
+function formatFloorDisplay(rawFloor) {
+    const raw = String(rawFloor || '').trim();
+    if (!raw) return '未知';
+
+    // Already normalized style: 5/15, 低层/15, 中层/33...
+    const slash = raw.match(/^(.+?)\s*\/\s*(\d+)\s*$/);
+    if (slash) {
+        const left = slash[1].trim();
+        const total = slash[2];
+        if (/^\d+$/.test(left)) return `${left}/${total}`;
+        const band = left.match(/(低|中|高)/);
+        if (band) return `${band[1]}层/${total}`;
+        return `${left}/${total}`;
+    }
+
+    const cleaned = raw.replace(/\s+/g, '');
+    const totalMatch = cleaned.match(/(?:共|总高|总)(\d+)层/);
+    const total = totalMatch ? totalMatch[1] : '';
+
+    // Exact current floor, e.g. 5层 / 第5层 / 5层(共15层)
+    let exact = '';
+    for (const m of cleaned.matchAll(/(\d+)层/g)) {
+        const idx = m.index || 0;
+        const prefix = cleaned.slice(Math.max(0, idx - 2), idx);
+        // Skip total-floor markers like "共15层" / "总高18层".
+        if (prefix.endsWith('共') || prefix.endsWith('总') || prefix.endsWith('高')) continue;
+        exact = m[1];
+        break;
+    }
+
+    // Floor band, e.g. 低楼层 / 中层 / 高层
+    const bandMatch = cleaned.match(/(低|中|高)(?:楼)?层/);
+    const band = bandMatch ? `${bandMatch[1]}层` : '';
+
+    if (exact && total) return `${exact}/${total}`;
+    if (exact) return `${exact}/未知`;
+    if (band && total) return `${band}/${total}`;
+    if (band) return `${band}/未知`;
+    return '未知';
+}
+
+function normalizeDecoration(raw) {
+    const txt = String(raw || '').replace(/\s+/g, '');
+    if (!txt) return '';
+    if (txt.includes('豪装') || txt.includes('豪华装修') || txt.includes('高档装修') || txt.includes('高装')) return '豪装';
+    if (txt.includes('精装') || txt.includes('精装修') || txt.includes('精致装修') || txt.includes('精修')) return '精装';
+    if (
+        txt.includes('简装')
+        || txt.includes('简单装修')
+        || txt.includes('简易装修')
+        || txt.includes('普通装修')
+        || txt.includes('中装')
+    ) return '简装';
+    if (txt.includes('毛坯') || txt.includes('毛胚') || txt.includes('毛坏') || txt.includes('清水')) return '毛坯';
+    return '';
+}
+
+function isDecorationPlaceholder(raw) {
+    const txt = String(raw || '').replace(/\s+/g, '');
+    if (!txt) return true;
+    if (/^[-—–_]+$/.test(txt)) return true;
+    if (['未知', '未填', '暂无', '无'].includes(txt)) return true;
+    return false;
+}
+
+function normalizeOrientation(raw) {
+    const txt = String(raw || '').replace(/\s+/g, '');
+    if (!txt) return '';
+    const cleaned = txt
+        .replace(/精装修?|豪装|简装|简单装修|简易装修|普通装修|中装|毛坯房?|毛胚房?|毛坏/g, '')
+        .replace(/[|·]/g, '');
+    const keep = Array.from(cleaned).filter(ch => '东南西北'.includes(ch)).join('');
+    if (!keep) return '';
+    if (keep.includes('南') && keep.includes('北')) return '南北';
+    if (keep.includes('东') && keep.includes('西') && !keep.includes('南') && !keep.includes('北')) return '东西';
+    return keep.slice(0, 4);
+}
+
+function inferDecoration(rec) {
+    const direct = String(rec && rec.decoration ? rec.decoration : '').trim();
+    const directNorm = normalizeDecoration(direct);
+    if (directNorm) return directNorm;
+    if (direct && !isDecorationPlaceholder(direct)) return direct;
+    const candidates = [
+        rec.houseInfo,
+        rec.fullText,
+        rec.rawText,
+        rec.rawMetaText,
+        rec.title,
+        rec.remark,
+        rec.desc,
+    ];
+    for (const c of candidates) {
+        const v = normalizeDecoration(c || '');
+        if (v) return v;
+    }
+    return '';
+}
+
+function inferOrientation(rec) {
+    const candidates = [
+        rec.orientation,
+        rec.houseInfo,
+        rec.fullText,
+        rec.layout,
+    ];
+    for (const c of candidates) {
+        const v = normalizeOrientation(c || '');
+        if (v) return v;
+    }
+    return '';
+}
+
+function isBlankLikeText(raw) {
+    const txt = String(raw || '').replace(/\s+/g, '');
+    if (!txt) return true;
+    if (/^[-—–_]+$/.test(txt)) return true;
+    if (['未知', '未填', '暂无', '无'].includes(txt)) return true;
+    return false;
+}
+
+function isMissingNumber(v) {
+    return !(+v > 0);
+}
+
+function collectMissingMetaFields(rec) {
+    const missing = [];
+    if (isMissingNumber(rec.totalPrice)) missing.push('总价');
+    if (isMissingNumber(rec.unitPrice)) missing.push('单价');
+    if (isMissingNumber(rec.area)) missing.push('面积');
+    if (isBlankLikeText(normalizeLayout(rec.layout || ''))) missing.push('户型');
+    if (!inferDecoration(rec)) missing.push('装修');
+    if (isBlankLikeText(inferOrientation(rec))) missing.push('朝向');
+    const floor = String(rec.floor || '').trim();
+    if (!floor || floor === '未知' || /^[-—–_]+$/.test(floor)) missing.push('楼层');
+    return missing;
+}
+
+function mergeMissingFieldsFromRecognized(base, recognized) {
+    const next = { ...base };
+    const changed = [];
+    const pushChanged = (name) => {
+        if (!changed.includes(name)) changed.push(name);
+    };
+
+    if (isMissingNumber(base.totalPrice) && (+recognized.totalPrice > 0)) {
+        next.totalPrice = +recognized.totalPrice;
+        pushChanged('总价');
+    }
+    if (isMissingNumber(base.unitPrice) && (+recognized.unitPrice > 0)) {
+        next.unitPrice = Math.round(+recognized.unitPrice);
+        pushChanged('单价');
+    }
+    if (isMissingNumber(base.area) && (+recognized.area > 0)) {
+        next.area = +(+recognized.area).toFixed(1);
+        pushChanged('面积');
+    }
+
+    const baseLayout = normalizeLayout(base.layout || '');
+    const recLayout = normalizeLayout(recognized.layout || '');
+    if (isBlankLikeText(baseLayout) && !isBlankLikeText(recLayout)) {
+        next.layout = recLayout;
+        pushChanged('户型');
+    }
+
+    const baseDecoration = inferDecoration(base);
+    const recDecoration = normalizeDecoration(recognized.decoration || recognized.decoration_raw || '');
+    if (!baseDecoration && recDecoration) {
+        next.decoration = recDecoration;
+        pushChanged('装修');
+    }
+
+    const baseOrientation = inferOrientation(base);
+    const recOrientation = normalizeOrientation(recognized.orientation || '');
+    if (isBlankLikeText(baseOrientation) && !isBlankLikeText(recOrientation)) {
+        next.orientation = recOrientation;
+        pushChanged('朝向');
+    }
+
+    const baseFloor = String(base.floor || '').trim();
+    const recFloor = String(recognized.floor || '').trim();
+    const baseFloorMissing = !baseFloor || baseFloor === '未知' || /^[-—–_]+$/.test(baseFloor);
+    if (baseFloorMissing && recFloor && recFloor !== '未知') {
+        next.floor = recFloor;
+        pushChanged('楼层');
+    }
+
+    if (changed.length > 0) {
+        if (!String(next.date || '').trim()) next.date = nowStr();
+        if (!String(next.sourceUrl || '').trim() && String(recognized.sourceUrl || '').trim()) {
+            next.sourceUrl = String(recognized.sourceUrl || '').trim();
+        }
+    }
+    return { next, changed };
+}
+
+async function repairRecordById(recId, options = {}) {
+    const {
+        openSource = false,
+        skipBackendPing = false,
+        renderAfterWrite = true,
+        timeoutSeconds = 22,
+        manualAssist = false,
+        manualAssistMinMs = 8000,
+        manualAssistMaxMs = 15000,
+    } = options;
+    const id = String(recId || '').trim();
+    if (!id) return { status: 'failed', reason: '缺少记录 ID', changed: [] };
+    const rec = await db.getOne(id);
+    if (!rec) return { status: 'failed', reason: '记录不存在或已被删除', changed: [] };
+    const sourceUrl = String(rec.sourceUrl || '').trim();
+    if (!/^https?:\/\//i.test(sourceUrl)) {
+        return { status: 'failed', reason: '该记录缺少可访问的原文链接', changed: [] };
+    }
+    if (openSource) {
+        window.open(sourceUrl, '_blank', 'noopener,noreferrer');
+    }
+
+    const missing = collectMissingMetaFields(rec);
+    if (missing.length === 0) {
+        return { status: 'skipped', reason: '字段完整', changed: [] };
+    }
+    if (!skipBackendPing) {
+        const ok = await pingBackend();
+        if (!ok) return { status: 'failed', reason: '后端未连接', changed: [] };
+    }
+    try {
+        const runOnce = async () => await requestRecordRepair({
+            item: {
+                id,
+                sourceUrl,
+                platform: String(rec.platform || ''),
+            },
+            timeout_seconds: timeoutSeconds,
+        });
+        let result = await runOnce();
+        let reasonCode = String((result && result.reason_code) || '');
+        if (manualAssist && (reasonCode === 'blocked' || reasonCode === 'login_required')) {
+            const waitMs = manualAssistMinMs + Math.floor(Math.random() * Math.max(1, manualAssistMaxMs - manualAssistMinMs));
+            await sleep(waitMs);
+            result = await runOnce();
+            reasonCode = String((result && result.reason_code) || reasonCode || '');
+        }
+        if (!result || !result.ok || !result.updated) {
+            return {
+                status: 'failed',
+                reason: (result && result.reason) || '未识别到可用字段',
+                reasonCode: reasonCode || 'unknown',
+                changed: [],
+            };
+        }
+        const merged = mergeMissingFieldsFromRecognized(rec, result.updated);
+        if ((merged.changed || []).length === 0) {
+            return { status: 'skipped', reason: '识别到结果但缺失字段未命中', reasonCode: 'not_found', changed: [] };
+        }
+        await db.addOne(merged.next);
+        if (renderAfterWrite) await render();
+        return { status: 'updated', reason: '', reasonCode: '', changed: merged.changed || [] };
+    } catch (err) {
+        const msg = err && err.message ? err.message : String(err);
+        return {
+            status: 'failed',
+            reason: msg,
+            reasonCode: /timeout|超时/i.test(msg) ? 'timeout' : 'unknown',
+            changed: [],
+        };
+    }
+}
+
+function summarizeReasonCodes(items) {
+    const stats = {
+        blocked: 0,
+        login_required: 0,
+        not_found: 0,
+        invalid_url: 0,
+        timeout: 0,
+        runtime_error: 0,
+        unknown: 0,
+    };
+    (items || []).forEach((it) => {
+        const code = String(it.reasonCode || it.reason_code || '').trim();
+        if (!code || stats[code] == null) stats.unknown += 1;
+        else stats[code] += 1;
+    });
+    return stats;
+}
+
+async function retryDecorationFailedItems() {
+    const failedItems = Array.isArray(_decorationFailedItems) ? _decorationFailedItems : [];
+    if (failedItems.length === 0) {
+        toast('暂无失败项可复识别', 'danger');
+        return;
+    }
+    if (!confirm(`将按人工接管模式复识别失败项 ${failedItems.length} 条（会打开原文并等待页面稳定），是否继续？`)) return;
+    const ok = await pingBackend();
+    if (!ok) {
+        toast('后端未连接，无法执行失败项复识别', 'danger');
+        return;
+    }
+    const retryBtn = document.getElementById('failed-retry-btn');
+    if (retryBtn) {
+        retryBtn.disabled = true;
+        retryBtn.textContent = `复识别中（0/${failedItems.length}）...`;
+    }
+    let updated = 0;
+    let skipped = 0;
+    const nextFailed = [];
+    try {
+        for (let i = 0; i < failedItems.length; i++) {
+            const fid = String(failedItems[i].id || '').trim();
+            if (!fid) continue;
+            const rs = await repairRecordById(fid, {
+                openSource: true,
+                skipBackendPing: true,
+                renderAfterWrite: false,
+                timeoutSeconds: 24,
+                manualAssist: true,
+                manualAssistMinMs: 8000,
+                manualAssistMaxMs: 15000,
+            });
+            if (rs.status === 'updated') updated += 1;
+            else if (rs.status === 'skipped') skipped += 1;
+            else {
+                nextFailed.push({
+                    id: fid,
+                    sourceUrl: String(failedItems[i].sourceUrl || ''),
+                    reason: rs.reason || '未识别到可用字段',
+                    reasonCode: rs.reasonCode || 'unknown',
+                });
+            }
+            if (retryBtn) retryBtn.textContent = `复识别中（${i + 1}/${failedItems.length}）...`;
+            if (i < failedItems.length - 1) await sleep(1200 + Math.floor(Math.random() * 1400));
+        }
+        await render();
+        if (nextFailed.length > 0) {
+            openDecorationFailedModal(nextFailed);
+            const reasonStats = summarizeReasonCodes(nextFailed);
+            toast(
+                `复识别完成：成功 ${updated} 条，跳过 ${skipped} 条，仍失败 ${nextFailed.length} 条（风控 ${reasonStats.blocked} / 登录 ${reasonStats.login_required}）`,
+                'danger'
+            );
+            return;
+        }
+        closeDecorationFailedModal();
+        toast(`复识别完成：成功 ${updated} 条，跳过 ${skipped} 条，失败 0 条`, 'success');
+    } finally {
+        if (retryBtn) {
+            retryBtn.disabled = false;
+            retryBtn.textContent = nextFailed.length > 0
+                ? `失败项一键复识别（${nextFailed.length}）`
+                : '失败项一键复识别';
+        }
+    }
+}
+
+async function openSourceAndRepairFromRow(event, id) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const recId = String(id || '').trim();
+    if (!recId) return;
+    const rec = await db.getOne(recId);
+    const missing = rec ? collectMissingMetaFields(rec) : [];
+    toast(
+        missing.length > 0
+            ? `已打开原文，正在补齐缺失字段：${missing.join(' / ')}`
+            : '已打开原文，检查是否需要补齐',
+        'success'
+    );
+    const rs = await repairRecordById(recId, {
+        openSource: true,
+        skipBackendPing: false,
+        renderAfterWrite: true,
+        timeoutSeconds: 22,
+        manualAssist: true,
+        manualAssistMinMs: 8000,
+        manualAssistMaxMs: 15000,
+    });
+    if (rs.status === 'updated') {
+        toast(`补齐成功：${(rs.changed || []).join(' / ')}`, 'success');
+        return;
+    }
+    if (rs.status === 'skipped') {
+        toast(`无需补齐：${rs.reason || '字段完整'}`, 'success');
+        return;
+    }
+    const hint = reasonCodeToHint(rs.reasonCode || '');
+    toast(`识别失败：${rs.reason || '未识别到可用字段'}${hint ? `；${hint}` : ''}`, 'danger');
+}
+
+let _batchRepairRunning = false;
+async function repairSelectedFromSources() {
+    if (_batchRepairRunning) return;
+    const ids = Array.from(_selectedMainIds || [])
+        .map((x) => String(x || '').trim())
+        .filter(Boolean);
+    if (ids.length === 0) {
+        toast('请先勾选要补齐的记录', 'danger');
+        return;
+    }
+    if (!confirm(`将按低速串行回查已勾选 ${ids.length} 条记录，仅补齐缺失字段，是否继续？`)) return;
+    const ok = await pingBackend();
+    if (!ok) {
+        toast('后端未连接，无法执行勾选补齐', 'danger');
+        return;
+    }
+    const autoOpenSource = getBatchRepairAutoOpen();
+    const openFailedOnly = getBatchRepairOpenFailedOnly();
+    const budgetMs = 10 * 60 * 1000;
+    const guardMs = 9 * 60 * 1000;
+    if (openFailedOnly) {
+        toast('已开启“仅打开失败项原文”：成功/跳过项不会打开链接', 'success');
+    } else if (autoOpenSource) {
+        toast('已开启“自动打开原文”：浏览器可能拦截部分弹窗', 'success');
+    }
+
+    const btn = document.getElementById('selected-repair-btn');
+    _batchRepairRunning = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = `补齐中（0/${ids.length}）...`;
+    }
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+    const failedItems = [];
+    const startedAt = Date.now();
+    let blockedFailCount = 0;
+    let stoppedEarly = false;
+    let stopReason = '';
+    let stopReasonCode = '';
+    try {
+        for (let i = 0; i < ids.length; i++) {
+            const elapsedMs = Date.now() - startedAt;
+            if (elapsedMs >= guardMs) {
+                stoppedEarly = true;
+                stopReason = `自动阶段预算达到 ${Math.round(elapsedMs / 1000)} 秒，转人工接管`;
+                stopReasonCode = 'budget_guard';
+                break
+            }
+            const rec = await db.getOne(ids[i]);
+            const rs = await repairRecordById(ids[i], {
+                openSource: autoOpenSource && !openFailedOnly,
+                skipBackendPing: true,
+                renderAfterWrite: false,
+                timeoutSeconds: 24,
+            });
+            if (rs.status === 'updated') updated += 1;
+            else if (rs.status === 'skipped') skipped += 1;
+            else {
+                failed += 1;
+                if (String(rs.reasonCode || '') === 'blocked') blockedFailCount += 1;
+                failedItems.push({
+                    id: ids[i],
+                    sourceUrl: String((rec && rec.sourceUrl) || ''),
+                    reason: rs.reason || '未识别到可用字段',
+                    reasonCode: rs.reasonCode || 'unknown',
+                });
+            }
+            const processed = i + 1;
+            if (processed >= 6) {
+                const blockedRate = blockedFailCount / processed;
+                if (blockedRate >= 0.5) {
+                    stoppedEarly = true;
+                    stopReason = `检测到风控偏高（${Math.round(blockedRate * 100)}%），已转人工接管`;
+                    stopReasonCode = 'blocked_high';
+                    break;
+                }
+            }
+            if (btn) btn.textContent = `补齐中（${i + 1}/${ids.length}）...`;
+            if (i < ids.length - 1) {
+                const baseGap = (autoOpenSource && !openFailedOnly) ? 1600 : 900;
+                await sleep(baseGap + Math.floor(Math.random() * 900));
+            }
+        }
+        if (stoppedEarly) {
+            const processedSet = new Set([
+                ...failedItems.map((x) => String(x.id || '')),
+            ]);
+            const doneCount = updated + skipped + failedItems.length;
+            for (let i = doneCount; i < ids.length; i++) {
+                if (processedSet.has(ids[i])) continue;
+                const rec = await db.getOne(ids[i]);
+                failed += 1;
+                failedItems.push({
+                    id: ids[i],
+                    sourceUrl: String((rec && rec.sourceUrl) || ''),
+                    reason: stopReason,
+                    reasonCode: stopReasonCode || 'budget_guard',
+                });
+            }
+        }
+        await render();
+        if (failedItems.length > 0) {
+            if (openFailedOnly) {
+                const maxOpen = 12;
+                const openTargets = failedItems
+                    .map((x) => String(x.sourceUrl || '').trim())
+                    .filter((x, idx, arr) => /^https?:\/\//i.test(x) && arr.indexOf(x) === idx)
+                    .slice(0, maxOpen);
+                for (const url of openTargets) {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                    await sleep(240);
+                }
+                if (openTargets.length > 0) {
+                    const left = Math.max(0, failedItems.length - openTargets.length);
+                    const hint = left > 0 ? `，其余 ${left} 条可在失败弹窗里点“打开原文↗”` : '';
+                    toast(`已自动打开失败项原文 ${openTargets.length} 条${hint}`, 'danger');
+                }
+            }
+            const reasonStats = summarizeReasonCodes(failedItems);
+            openDecorationFailedModal(failedItems);
+            const timeHint = `（耗时 ${Math.round((Date.now() - startedAt) / 1000)} 秒 / 预算 ${Math.round(budgetMs / 1000)} 秒）`;
+            const reasonHint = `（风控 ${reasonStats.blocked} / 登录 ${reasonStats.login_required} / 未识别 ${reasonStats.not_found}）`;
+            toast(
+                `勾选补齐完成：成功 ${updated} 条，跳过 ${skipped} 条，失败 ${failed} 条${reasonHint}${timeHint}`,
+                'danger'
+            );
+            return;
+        }
+        toast(
+            `勾选补齐完成：成功 ${updated} 条，跳过 ${skipped} 条，失败 ${failed} 条（耗时 ${Math.round((Date.now() - startedAt) / 1000)} 秒）`,
+            failed > 0 ? 'danger' : 'success'
+        );
+    } finally {
+        _batchRepairRunning = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = _selectedMainIds.size > 0
+                ? `补齐已勾选房源（${_selectedMainIds.size}）`
+                : '补齐已勾选房源';
+        }
+    }
+}
+
+/* ========================================================================
+ * 主表渲染（异步）
+ * ====================================================================== */
+let sortConfig = { key: 'date', dir: 'desc' };
+let _renderRunning = false;
+let _renderQueued  = false;
+let _selectedMainIds = new Set();
+let _lastRenderedMainIds = [];
+let _decorationFailedItems = [];
+
+function updateMainSelectionTip() {
+    const tip = document.getElementById('main-selected-tip');
+    if (tip) tip.textContent = `已勾选 ${_selectedMainIds.size} 项`;
+    const btn = document.getElementById('selected-repair-btn');
+    if (btn && !_batchRepairRunning) {
+        btn.textContent = _selectedMainIds.size > 0
+            ? `补齐已勾选房源（${_selectedMainIds.size}）`
+            : '补齐已勾选房源';
+    }
+    const delBtn = document.getElementById('selected-delete-btn');
+    if (delBtn) {
+        delBtn.textContent = _selectedMainIds.size > 0
+            ? `删除已勾选（${_selectedMainIds.size}）`
+            : '删除已勾选';
+    }
+}
+
+function updateMainHeaderCheckbox() {
+    const allBox = document.getElementById('main-all');
+    if (!allBox) return;
+    const total = _lastRenderedMainIds.length;
+    const selectedOnPage = _lastRenderedMainIds.filter((id) => _selectedMainIds.has(id)).length;
+    allBox.checked = total > 0 && selectedOnPage === total;
+    allBox.indeterminate = selectedOnPage > 0 && selectedOnPage < total;
+}
+
+function mainToggleAll(checked) {
+    for (const id of _lastRenderedMainIds) {
+        if (checked) _selectedMainIds.add(id);
+        else _selectedMainIds.delete(id);
+    }
+    updateMainSelectionTip();
+    render();
+}
+
+function mainToggleRow(id, checked) {
+    const key = String(id || '');
+    if (!key) return;
+    if (checked) _selectedMainIds.add(key);
+    else _selectedMainIds.delete(key);
+    updateMainSelectionTip();
+    updateMainHeaderCheckbox();
+}
+
+function mainRowClick(id, event) {
+    if (event && event.target && event.target.closest('a,button,input,label')) return;
+    const key = String(id || '');
+    if (!key) return;
+    if (_selectedMainIds.has(key)) _selectedMainIds.delete(key);
+    else _selectedMainIds.add(key);
+    updateMainSelectionTip();
+    render();
+}
+
+function setSort(key) {
+    if (sortConfig.key === key) {
+        sortConfig.dir = sortConfig.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortConfig.key = key;
+        sortConfig.dir = 'desc';
+    }
+    render();
+}
+
+async function render() {
+    if (_renderRunning) { _renderQueued = true; return; }
+    _renderRunning = true;
+    try {
+        const all = await db.getAll();
+        const kw   = document.getElementById('f-kw').value.toLowerCase();
+        const reg  = document.getElementById('f-region').value;
+        const pMin = parseFloat(document.getElementById('f-pmin').value) || 0;
+        const pMax = parseFloat(document.getElementById('f-pmax').value) || Infinity;
+        const aMin = parseFloat(document.getElementById('f-area').value) || 0;
+
+        let filtered = all.filter(r => {
+            if (kw && !((r.community||'').toLowerCase().includes(kw)) && !((r.id||'').toLowerCase().includes(kw))) return false;
+            if (reg && r.region !== reg) return false;
+            if ((+r.totalPrice||0) < pMin || (+r.totalPrice||0) > pMax) return false;
+            if ((+r.area||0) < aMin) return false;
+            return true;
+        });
+
+        filtered.sort((a, b) => {
+            let vA = a[sortConfig.key];
+            let vB = b[sortConfig.key];
+            if (sortConfig.key === 'date') { vA = new Date(vA); vB = new Date(vB); }
+            return sortConfig.dir === 'asc' ? (vA > vB ? 1 : -1) : (vA < vB ? 1 : -1);
+        });
+
+        const n = filtered.length;
+        _lastRenderedMainIds = filtered.map((r) => String(r.id || ''));
+        document.getElementById('s-count').textContent     = n;
+        document.getElementById('s-avg-total').textContent = n ? (filtered.reduce((s,r)=>s+(+r.totalPrice||0),0)/n).toFixed(1) : '0';
+        document.getElementById('s-avg-unit').textContent  = n ? Math.round(filtered.reduce((s,r)=>s+(+r.unitPrice||0),0)/n).toLocaleString() : '0';
+
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = filtered.map((r, idx) => {
+            const recId = String(r.id || '');
+            const selected = _selectedMainIds.has(recId);
+            const floorDisplay = formatFloorDisplay(r.floor);
+            const decoration = inferDecoration(r);
+            const orientation = inferOrientation(r);
+            return `
+                <tr class="${selected ? 'selected' : ''}" onclick="mainRowClick('${escapeHtml(recId)}', event)">
+                    <td><input type="checkbox" onclick="event.stopPropagation()" onchange="mainToggleRow('${escapeHtml(recId)}', this.checked)" ${selected ? 'checked' : ''}></td>
+                    <td class="mono" style="color:var(--text-muted)">${idx + 1}</td>
+                    <td style="font-weight:700">${escapeHtml(r.community||'')}</td>
+                    <td><span class="badge">${escapeHtml(r.region||'')}</span></td>
+                    <td class="mono" style="font-weight:700; color:var(--danger)">${(+r.totalPrice||0).toFixed(1)}</td>
+                    <td class="mono">${(+r.unitPrice||0).toLocaleString()}</td>
+                    <td class="mono">${(+r.area||0).toFixed(1)}</td>
+                    <td class="mono">${escapeHtml(r.layout || '-')}</td>
+                    <td>${decoration ? `<span class="badge">${escapeHtml(decoration)}</span>` : '-'}</td>
+                    <td class="mono">${orientation ? escapeHtml(orientation) : '-'}</td>
+                    <td class="mono">${escapeHtml(floorDisplay)}</td>
+                    <td class="mono" style="font-size:11px; color:var(--text-muted)">${escapeHtml(r.date||'')}</td>
+                    <td>${
+                        r.sourceUrl
+                            ? `<a class="source-link" href="${escapeHtml(r.sourceUrl)}" target="_blank" rel="noopener noreferrer" onclick="openSourceAndRepairFromRow(event, '${escapeHtml(recId)}')">原文↗</a>`
+                            : '-'
+                    }</td>
+                    <td style="text-align:right">
+                        <button class="btn-action" onclick="openEditForm(event, '${escapeHtml(r.id)}')">编辑</button>
+                        <button class="btn-action" onclick="delRow(event, '${escapeHtml(r.id)}')">剔除</button>
+                    </td>
+                </tr>`;
+        }).join('');
+        updateMainSelectionTip();
+        updateMainHeaderCheckbox();
+    } finally {
+        _renderRunning = false;
+        if (_renderQueued) { _renderQueued = false; render(); }
+    }
+}
+
+function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[c]));
+}
+
+async function delRow(e, id) {
+    e.stopPropagation();
+    if (!confirm('确认剔除该小区房源？')) return;
+    _selectedMainIds.delete(String(id || ''));
+    await db.delete(id);
+    render();
+}
+
+async function deleteSelectedRows() {
+    const ids = Array.from(_selectedMainIds || [])
+        .map((x) => String(x || '').trim())
+        .filter(Boolean);
+    if (ids.length === 0) {
+        toast('请先勾选要删除的记录', 'danger');
+        return;
+    }
+    if (!confirm(`确认删除已勾选 ${ids.length} 条记录？删除后不可恢复。`)) return;
+    let ok = 0;
+    let failed = 0;
+    for (const id of ids) {
+        try {
+            await db.delete(id);
+            ok += 1;
+        } catch (err) {
+            failed += 1;
+            console.warn('[selected-delete] failed id=', id, err);
+        }
+    }
+    _selectedMainIds.clear();
+    await render();
+    if (failed > 0) {
+        toast(`批量删除完成：成功 ${ok} 条，失败 ${failed} 条`, 'danger');
+        return;
+    }
+    toast(`已删除 ${ok} 条勾选记录`, 'success');
+}
+
+function clearFilters() {
+    document.querySelectorAll('.filter-group .inp').forEach(i => i.value = '');
+    render();
+}
+
+async function exportData() {
+    const all = await db.getAll();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(all, null, 2));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    a.download = `vault_pro_backup_${nowStr().replace(/[: ]/g,'_')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+
+async function exportSelectedXls() {
+    const all = await db.getAll();
+    const selected = all.filter((r) => _selectedMainIds.has(String(r.id || '')));
+    if (selected.length === 0) {
+        toast('请先勾选编号后再导出', 'danger');
+        return;
+    }
+    const rows = selected.map((r, idx) => `
+        <tr>
+            <td>${idx + 1}</td>
+            <td>${escapeHtml(r.id || '')}</td>
+            <td>${escapeHtml(r.community || '')}</td>
+            <td>${escapeHtml(r.region || '')}</td>
+            <td>${(+r.totalPrice || 0).toFixed(1)}</td>
+            <td>${(+r.unitPrice || 0).toLocaleString()}</td>
+            <td>${(+r.area || 0).toFixed(1)}</td>
+            <td>${escapeHtml(r.layout || '')}</td>
+            <td>${escapeHtml(inferDecoration(r) || '')}</td>
+            <td>${escapeHtml(normalizeOrientation(r.orientation || '') || '')}</td>
+            <td>${escapeHtml(formatFloorDisplay(r.floor || ''))}</td>
+            <td>${escapeHtml(r.date || '')}</td>
+            <td>${escapeHtml(r.sourceUrl || '')}</td>
+        </tr>
+    `).join('');
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+        <table border="1">
+            <thead><tr>
+                <th>序号</th><th>编号</th><th>小区名称</th><th>区域</th><th>总价(万)</th><th>单价(元)</th><th>面积(㎡)</th>
+                <th>户型</th><th>装修</th><th>朝向</th><th>楼层</th><th>采集时间</th><th>原文链接</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    </body></html>`;
+    const blob = new Blob([`\ufeff${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vault_pro_selected_${nowStr().replace(/[: ]/g,'_')}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast(`已导出 ${selected.length} 条到 .xls`, 'success');
+}
+
+function openXlsImportPicker() {
+    const input = document.getElementById('xls-import-input');
+    if (!input) return;
+    input.value = '';
+    input.click();
+}
+
+function _toNum(raw) {
+    const txt = String(raw || '').replace(/,/g, '').trim();
+    if (!txt) return 0;
+    const n = Number(txt);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function _pickHeaderValue(row, headers, names) {
+    for (const name of names) {
+        const idx = headers.indexOf(name);
+        if (idx >= 0) return String(row[idx] || '').trim();
+    }
+    return '';
+}
+
+function parseRecordsFromXlsHtml(htmlText) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(String(htmlText || ''), 'text/html');
+    const table = doc.querySelector('table');
+    if (!table) return [];
+    const rows = Array.from(table.querySelectorAll('tr'));
+    if (rows.length < 2) return [];
+    const headers = Array.from(rows[0].querySelectorAll('th,td'))
+        .map((x) => String(x.textContent || '').replace(/\s+/g, ''));
+    const out = [];
+    for (let i = 1; i < rows.length; i++) {
+        const cells = Array.from(rows[i].querySelectorAll('td')).map((x) => String(x.textContent || '').trim());
+        if (cells.length === 0) continue;
+        const community = _pickHeaderValue(cells, headers, ['小区名称', '小区']);
+        const region = _pickHeaderValue(cells, headers, ['区域', '行政区']);
+        const totalPrice = _toNum(_pickHeaderValue(cells, headers, ['总价(万)', '总价']));
+        const unitPrice = Math.round(_toNum(_pickHeaderValue(cells, headers, ['单价(元)', '单价(元/㎡)', '单价'])));
+        const area = +_toNum(_pickHeaderValue(cells, headers, ['面积(㎡)', '面积'])).toFixed(1);
+        const layout = normalizeLayout(_pickHeaderValue(cells, headers, ['户型']));
+        const decoration = normalizeDecoration(_pickHeaderValue(cells, headers, ['装修']));
+        const orientation = normalizeOrientation(_pickHeaderValue(cells, headers, ['朝向']));
+        const floor = String(_pickHeaderValue(cells, headers, ['楼层']) || '').trim();
+        const date = String(_pickHeaderValue(cells, headers, ['采集时间', '日期']) || '').trim() || nowStr();
+        const sourceUrl = String(_pickHeaderValue(cells, headers, ['原文链接', '链接', 'sourceUrl']) || '').trim();
+        if (!community || !region || !(totalPrice > 0) || !(area > 0)) continue;
+        const finalUnitPrice = unitPrice > 0 ? unitPrice : Math.round((totalPrice * 10000) / area);
+        const hashKey = makeHash(community, area, totalPrice, floor);
+        out.push({
+            id: makeManualId(),
+            community,
+            region,
+            floor,
+            totalPrice,
+            unitPrice: finalUnitPrice > 0 ? finalUnitPrice : 0,
+            area,
+            layout,
+            decoration,
+            orientation,
+            date,
+            sourceUrl,
+            platform: 'import_xls',
+            hashKey,
+        });
+    }
+    return out;
+}
+
+async function onXlsImportFileChange(event) {
+    const input = event && event.target ? event.target : null;
+    const file = input && input.files && input.files[0] ? input.files[0] : null;
+    if (!file) return;
+    const txt = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
+        reader.readAsText(file, 'utf-8');
+    }).catch(() => '');
+    const parsed = parseRecordsFromXlsHtml(txt);
+    if (parsed.length === 0) {
+        toast('导入失败：未识别到可入库记录（请使用本工具导出的 .xls）', 'danger');
+        return;
+    }
+
+    const existingAll = await db.getAll();
+    const existingByHash = new Map();
+    for (const rec of existingAll) {
+        const key = String(rec.hashKey || '').trim();
+        if (!key || existingByHash.has(key)) continue;
+        existingByHash.set(key, rec);
+    }
+    const dupSet = new Set(existingByHash.keys());
+    const records = [];
+    const updates = [];
+    let skipped = 0;
+    for (const rec of parsed) {
+        const key = String(rec.hashKey || '').trim();
+        if (!key) {
+            skipped += 1;
+            continue;
+        }
+        if (dupSet.has(key)) {
+            const existing = existingByHash.get(key);
+            const enriched = enrichExistingRecord(existing, rec);
+            if (enriched) {
+                updates.push(enriched);
+                existingByHash.set(key, enriched);
+            } else {
+                skipped += 1;
+            }
+            continue;
+        }
+        dupSet.add(key);
+        records.push(rec);
+    }
+
+    const added = records.length > 0 ? await db.addMany(records) : 0;
+    const updated = updates.length > 0 ? await db.addMany(updates) : 0;
+    await render();
+    toast(
+        `导入完成：解析 ${parsed.length} 条，新增 ${added} 条，更新 ${updated} 条，跳过 ${skipped} 条`,
+        'success'
+    );
+}
+
+/* ========================================================================
+ * Toast 提示
+ * ====================================================================== */
+let _toastTimer = null;
+function toast(msg, kind) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (kind ? ' ' + kind : '');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => { el.className = 'toast'; }, 2400);
+}
+
+/* ========================================================================
+ * 后端通信
+ * ====================================================================== */
+let _backendStatusTimer = null;
+let _backendConnected = false;
+let _backendAutoConnect = localStorage.getItem(BACKEND_AUTO_CONNECT_KEY) !== '0';
+let _backendConnectBusy = false;
+let _backendPanelHidden = localStorage.getItem(BACKEND_PANEL_HIDDEN_KEY) === '1';
+let _oneClickSupported = false;
+let _oneClickRegistered = false;
+let _runtimeLogTimer = null;
+let _runtimeLogLevel = localStorage.getItem(RUNTIME_LOG_LEVEL_KEY) || 'all';
+
+function applyBackendPanelVisibility() {
+    const actions = document.querySelector('.dashboard-actions');
+    const toggleBtn = document.getElementById('backend-panel-toggle-btn');
+    if (actions) {
+        actions.classList.toggle('backend-panel-hidden', _backendPanelHidden);
+    }
+    if (toggleBtn) {
+        toggleBtn.textContent = _backendPanelHidden ? '显示后端' : '隐藏后端';
+        toggleBtn.title = _backendPanelHidden ? '显示后端连接状态与控制按钮' : '隐藏后端连接状态与控制按钮';
+    }
+}
+
+function setBackendPanelHidden(hidden, opts = {}) {
+    const { persist = true } = opts;
+    _backendPanelHidden = !!hidden;
+    if (persist) {
+        localStorage.setItem(BACKEND_PANEL_HIDDEN_KEY, _backendPanelHidden ? '1' : '0');
+    }
+    applyBackendPanelVisibility();
+}
+
+function toggleBackendPanelVisibility() {
+    setBackendPanelHidden(!_backendPanelHidden, { persist: true });
+}
+
+function maybeAutoHideBackendPanelAfterConnect() {
+    if (_backendPanelHidden) return;
+    setBackendPanelHidden(true, { persist: true });
+}
+
+async function pingBackend(opts = {}) {
+    const { respectToggle = true } = opts;
+    if (respectToggle && !_backendAutoConnect) {
+        // 自动连接关闭时，不主动拉起后端；但仍可由调用方选择真实探测状态。
+        return pingBackend({ respectToggle: false });
+    }
+    try {
+        const r = await fetch(`${BACKEND_URL}/health`, { method: 'GET' });
+        if (!r.ok) {
+            setBackendStatus(false);
+            return false;
+        }
+        const j = await r.json();
+        const ok = !!j.ok;
+        setBackendStatus(ok);
+        return ok;
+    } catch (_) {
+        setBackendStatus(false);
+        return false;
+    }
+}
+
+async function startCollectRequest(payload) {
+    const r = await fetch(`${BACKEND_URL}/collect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(`后端返回 HTTP ${r.status}`);
+    return await r.json();
+}
+
+async function startCommunityPriceCollectRequest(payload) {
+    const r = await fetch(`${BACKEND_URL}/community_price_collect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(`后端返回 HTTP ${r.status}`);
+    return await r.json();
+}
+
+async function pollCommunityPriceTask(taskId, onUpdate) {
+    const start = Date.now();
+    while (true) {
+        if (Date.now() - start > POLL_TIMEOUT) {
+            throw new Error('轮询超时（5 分钟），请重试');
+        }
+        const r = await fetch(`${BACKEND_URL}/community_price_collect/${taskId}`);
+        if (!r.ok) throw new Error(`轮询失败 HTTP ${r.status}`);
+        const j = await r.json();
+        if (onUpdate) onUpdate(j);
+        if (j.status === 'done') return j;
+        if (j.status === 'failed') throw new Error(j.message || '后端任务失败');
+        await sleep(POLL_INTERVAL);
+    }
+}
+
+async function requestDecorationRepair(payload) {
+    const r = await fetch(`${BACKEND_URL}/repair/decorations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(`回查失败 HTTP ${r.status}`);
+    return await r.json();
+}
+
+async function requestRecordRepair(payload) {
+    const r = await fetch(`${BACKEND_URL}/repair/record`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(`单条回查失败 HTTP ${r.status}`);
+    return await r.json();
+}
+
+async function fetchOneClickStatus() {
+    const r = await fetch(`${BACKEND_URL}/oneclick/status`, { method: 'GET' });
+    if (!r.ok) {
+        throw new Error(`HTTP ${r.status}`);
+    }
+    return await r.json();
+}
+
+function updateOneClickInstallButton() {
+    const btn = document.getElementById('backend-oneclick-install-btn');
+    if (!btn) return;
+    const show = _backendConnected && _oneClickSupported && !_oneClickRegistered;
+    btn.style.display = show ? '' : 'none';
+}
+
+async function refreshOneClickStatus() {
+    if (!_backendConnected) {
+        _oneClickSupported = false;
+        _oneClickRegistered = false;
+        updateOneClickInstallButton();
+        return;
+    }
+    try {
+        const st = await fetchOneClickStatus();
+        _oneClickSupported = !!st.supported;
+        _oneClickRegistered = !!st.registered;
+        updateOneClickInstallButton();
+    } catch (_) {
+        _oneClickSupported = false;
+        _oneClickRegistered = false;
+        updateOneClickInstallButton();
+    }
+}
+
+async function installOneClickBackend() {
+    if (!_backendConnected) {
+        toast('请先连接后端，再安装一键连接', 'danger');
+        return;
+    }
+    const btn = document.getElementById('backend-oneclick-install-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '安装中...';
+    }
+    try {
+        const r = await fetch(`${BACKEND_URL}/oneclick/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok || !body.ok) {
+            throw new Error(body.detail || body.message || `HTTP ${r.status}`);
+        }
+        toast('一键连接安装成功，可直接点击“连接后端”自动拉起', 'success');
+        if (localStorage.getItem(ONECLICK_GUIDE_SHOWN_KEY) !== '1') {
+            localStorage.setItem(ONECLICK_GUIDE_SHOWN_KEY, '1');
+            setTimeout(() => {
+                toast('首次使用如出现“是否打开外部应用”提示，请选择“允许”', 'success');
+            }, 700);
+        }
+        _oneClickRegistered = true;
+        updateOneClickInstallButton();
+    } catch (err) {
+        toast(`安装一键连接失败：${err.message || String(err)}`, 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '安装一键连接（推荐）';
+        }
+    }
+}
+
+async function fetchPlatformCheck(platforms, platformHosts) {
+    const params = new URLSearchParams();
+    params.set('platforms', (platforms || []).join(','));
+    if (platformHosts && Object.keys(platformHosts).length > 0) {
+        params.set('hosts', JSON.stringify(platformHosts));
+    }
+    const r = await fetch(`${BACKEND_URL}/platform_check?${params.toString()}`);
+    if (!r.ok) throw new Error(`平台自检失败 HTTP ${r.status}`);
+    const j = await r.json();
+    return Array.isArray(j.items) ? j.items : [];
+}
+
+async function fetchRuntimeLogs(limit = 300) {
+    const r = await fetch(`${BACKEND_URL}/runtime_logs?limit=${encodeURIComponent(limit)}`);
+    if (!r.ok) throw new Error(`日志读取失败 HTTP ${r.status}`);
+    const j = await r.json();
+    return Array.isArray(j.items) ? j.items : [];
+}
+
+function renderRuntimeLogs(items, errMsg = '') {
+    const box = document.getElementById('runtime-log-content');
+    const sub = document.getElementById('runtime-log-sub');
+    if (!box || !sub) return;
+    if (errMsg) {
+        box.textContent = `[错误] ${errMsg}`;
+        sub.textContent = '无法读取后端日志';
+        return;
+    }
+    if (!items || items.length === 0) {
+        box.textContent = '暂无日志（后端刚启动时属于正常）';
+        sub.textContent = '每 2 秒自动刷新';
+        return;
+    }
+
+    const levelRank = { info: 1, warning: 2, warn: 2, error: 3, critical: 4 };
+    const threshold = _runtimeLogLevel === 'error' ? 3 : (_runtimeLogLevel === 'warn_error' ? 2 : 1);
+    const filtered = items.filter((it) => {
+        const lv = String(it.level || 'INFO').toLowerCase();
+        const rank = levelRank[lv] || 1;
+        return rank >= threshold;
+    });
+
+    if (filtered.length === 0) {
+        box.textContent = '当前筛选级别下暂无日志';
+        sub.textContent = `每 2 秒自动刷新，筛选后 0/${items.length} 条`;
+        return;
+    }
+
+    box.textContent = filtered.map(it => {
+        const ts = String(it.ts || '').replace('T', ' ').replace('Z', '');
+        return `[${ts}] [${it.level || 'INFO'}] [${it.name || '-'}] ${it.message || ''}`;
+    }).join('\n');
+    box.scrollTop = box.scrollHeight;
+    sub.textContent = `每 2 秒自动刷新，筛选后 ${filtered.length}/${items.length} 条`;
+}
+
+function setRuntimeLogLevel(level) {
+    const next = ['all', 'warn_error', 'error'].includes(level) ? level : 'all';
+    _runtimeLogLevel = next;
+    localStorage.setItem(RUNTIME_LOG_LEVEL_KEY, next);
+    refreshRuntimeLogs();
+}
+
+async function refreshRuntimeLogs() {
+    try {
+        const items = await fetchRuntimeLogs(300);
+        renderRuntimeLogs(items);
+    } catch (err) {
+        renderRuntimeLogs([], err.message || String(err));
+    }
+}
+
+async function openRuntimeLogModal() {
+    document.getElementById('runtime-log-modal').classList.add('active');
+    const levelSel = document.getElementById('runtime-log-level');
+    if (levelSel) levelSel.value = _runtimeLogLevel;
+    await refreshRuntimeLogs();
+    if (_runtimeLogTimer) clearInterval(_runtimeLogTimer);
+    _runtimeLogTimer = setInterval(() => { refreshRuntimeLogs(); }, 2000);
+}
+
+function closeRuntimeLogModal() {
+    document.getElementById('runtime-log-modal').classList.remove('active');
+    if (_runtimeLogTimer) clearInterval(_runtimeLogTimer);
+    _runtimeLogTimer = null;
+}
+
+async function pollCollectTask(taskId, onUpdate) {
+    const start = Date.now();
+    while (true) {
+        if (Date.now() - start > POLL_TIMEOUT) {
+            throw new Error('轮询超时（5 分钟），可能后端卡住了，请手动停止 start.bat 后重试');
+        }
+        const r = await fetch(`${BACKEND_URL}/collect/${taskId}`);
+        if (!r.ok) throw new Error(`轮询失败 HTTP ${r.status}`);
+        const j = await r.json();
+        if (onUpdate) onUpdate(j);
+        if (j.status === 'done')   return j;
+        if (j.status === 'failed') throw new Error(j.message || '后端任务失败');
+        await sleep(POLL_INTERVAL);
+    }
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function isRiskControlMessage(msg) {
+    return RISK_CONTROL_RE.test(String(msg || ''));
+}
+
+function humanizeCollectError(msg) {
+    const raw = String(msg || '');
+    if (/ERR_CONNECTION_CLOSED|UNEXPECTED_EOF_WHILE_READING|SSLEOFError|getaddrinfo failed/i.test(raw)) {
+        return '目标站点连接被关闭（网络/TLS 受限），请先切换网络或仅勾选可访问平台后重试';
+    }
+    if (/callback\.58\.com\/antibot|verifycode|验证码|人机验证|访问频繁|captcha|verify/i.test(raw)) {
+        return '触发平台验证，请在弹出的浏览器窗口完成验证码/登录后再重试';
+    }
+    return raw;
+}
+
+function isRetryableCollectError(msg) {
+    const raw = String(msg || '');
+    // Captcha / risk-control / manual-verification issues should not auto-retry.
+    if (/验证码|人机验证|滑动验证|验证等待超时|访问频繁|captcha|verify|antibot/i.test(raw)) {
+        return false;
+    }
+    // Common transient network/runtime errors suitable for one retry.
+    if (/ERR_|ECONN|ENOTFOUND|getaddrinfo|timed out|timeout|SSLEOFError|UNEXPECTED_EOF|连接失败|网络|TLS|HTTP 5\d\d/i.test(raw)) {
+        return true;
+    }
+    // Default conservative behavior: do not auto-retry unknown failures.
+    return false;
+}
+
+function getSinceDaysFromForm() {
+    const sinceInput = document.getElementById('cf-since');
+    const parsed = parseInt(sinceInput?.value, 10);
+    return Number.isFinite(parsed) ? parsed : 7;
+}
+
+function setFixedWindowUiState(enabled) {
+    const fixedWindowInput = document.getElementById('cf-fixed-window');
+    if (fixedWindowInput) fixedWindowInput.checked = !!enabled;
+    localStorage.setItem(FIXED_WINDOW_KEY, enabled ? '1' : '0');
+    updateFixedWindowHint(enabled, getSinceDaysFromForm());
+}
+
+function resolveFixedWindowForRun(requested, sinceDays, triggerLabel = '本次采集') {
+    const parsedSinceDays = Number.isFinite(sinceDays) ? sinceDays : 7;
+    if (!requested) return false;
+    // Single-page mode is only suitable for short-window incremental pulls.
+    if (parsedSinceDays === 0 || parsedSinceDays > 7) {
+        setFixedWindowUiState(false);
+        const sinceText = parsedSinceDays === 0 ? '不限时间' : `近 ${parsedSinceDays} 天`;
+        toast(
+            `${triggerLabel}已自动切换为多页采集：当前时间范围为${sinceText}，单页模式常导致仅拿到约 10 条。`,
+            'danger'
+        );
+        return false;
+    }
+    return true;
+}
+
+function updateFixedWindowHint(enabled, sinceDays = getSinceDaysFromForm()) {
+    const el = document.getElementById('cf-fixed-window-hint');
+    if (!el) return;
+    const longWindow = sinceDays === 0 || sinceDays > 7;
+    if (enabled && longWindow) {
+        el.textContent = '当前：固定窗口低频模式（单页采集）+ 长时间范围，结果可能只有一页（约 10 条）；建议切换多页模式';
+        return;
+    }
+    el.textContent = enabled
+        ? '当前：固定窗口低频模式（单页采集，优先稳定，适合近 7 天以内增量）'
+        : '当前：多页采集模式（采集更多，但更容易触发频繁访问）';
+}
+
+function getThrottleSettingsFromForm() {
+    const throttleInput = document.getElementById('cf-throttle-seconds');
+    const cooldownInput = document.getElementById('cf-cooldown-seconds');
+    const riskWaitInput = document.getElementById('cf-risk-wait');
+    const autoRetryInput = document.getElementById('cf-auto-retry');
+    const retryDelayInput = document.getElementById('cf-retry-delay');
+    const autoDowngrade58Input = document.getElementById('cf-auto-downgrade-58-ephemeral');
+    const manualRegionConfirm58Input = document.getElementById('cf-manual-region-confirm-58');
+    const antiDetectionLevelInput = document.getElementById('cf-anti-detection-level');
+    const throttleSeconds = Math.max(0, Math.min(30, parseFloat(throttleInput?.value) || 0));
+    const cooldownSeconds = Math.max(0, Math.min(1800, parseInt(cooldownInput?.value, 10) || 0));
+    const riskWaitSeconds = Math.max(60, Math.min(1800, parseInt(riskWaitInput?.value, 10) || 180));
+    const autoRetryEnabled = !!autoRetryInput?.checked;
+    const retryDelaySeconds = Math.max(1, Math.min(300, parseInt(retryDelayInput?.value, 10) || 5));
+    const autoDowngrade58Ephemeral = autoDowngrade58Input ? !!autoDowngrade58Input.checked : true;
+    const manualRegionConfirm58 = manualRegionConfirm58Input ? !!manualRegionConfirm58Input.checked : true;
+    const antiDetectionLevel = normalizeAntiDetectionLevel(antiDetectionLevelInput?.value || 'medium');
+    return {
+        throttleSeconds,
+        cooldownSeconds,
+        riskWaitSeconds,
+        autoRetryEnabled,
+        retryDelaySeconds,
+        autoDowngrade58Ephemeral,
+        manualRegionConfirm58,
+        antiDetectionLevel,
+    };
+}
+
+function normalizeAntiDetectionLevel(raw) {
+    const v = String(raw || '').trim().toLowerCase();
+    if (v === 'low' || v === 'medium' || v === 'high') return v;
+    return 'medium';
+}
+
+function getCooldownMs() {
+    const saved = parseInt(localStorage.getItem(COOLDOWN_SECONDS_KEY) || '', 10);
+    if (Number.isFinite(saved) && saved >= 0) return saved * 1000;
+    return DEFAULT_COOLDOWN_MS;
+}
+
+function getSelectedPlatforms() {
+    return Array.from(document.querySelectorAll('input[name="cf-platform"]:checked')).map(i => i.value);
+}
+
+function normalizeHostInput(raw) {
+    let txt = String(raw || '').trim().toLowerCase();
+    if (!txt) return '';
+    txt = txt.replace(/^https?:\/\//, '');
+    txt = txt.split('/')[0].split('?')[0];
+    if (txt.includes(':')) txt = txt.split(':')[0];
+    if (!/^[a-z0-9.-]+$/.test(txt) || !txt.includes('.')) return '';
+    return txt;
+}
+
+function getPlatformHostsFromForm() {
+    const anjuke = normalizeHostInput(document.getElementById('cf-host-anjuke')?.value || '');
+    const tc58 = normalizeHostInput(document.getElementById('cf-host-58')?.value || '');
+    return {
+        anjuke: anjuke || DEFAULT_PLATFORM_HOSTS.anjuke,
+        '58': tc58 || DEFAULT_PLATFORM_HOSTS['58'],
+    };
+}
+
+function renderPlatformCheck(items, errMsg = '') {
+    const box = document.getElementById('cf-platform-check');
+    if (!box) return;
+    if (errMsg) {
+        box.textContent = `平台自检失败：${errMsg}`;
+        box.style.color = '#b91c1c';
+        return;
+    }
+    if (!items || items.length === 0) {
+        box.textContent = '请至少勾选一个平台后进行自检';
+        box.style.color = '#6b7280';
+        return;
+    }
+    const statusText = {
+        ok: '可用',
+        warn: '可用（需验证）',
+        down: '不可用',
+    };
+    const statusColor = {
+        ok: '#166534',
+        warn: '#92400e',
+        down: '#b91c1c',
+    };
+    box.innerHTML = items.map(it => {
+        const st = String(it.status || 'warn');
+        const text = statusText[st] || st;
+        const color = statusColor[st] || '#6b7280';
+        return `<div style="margin-top:4px"><b>${escapeHtml(it.display_name || it.platform || '')}</b>：<span style="color:${color}">${text}</span>，${escapeHtml(it.message || '')}</div>`;
+    }).join('');
+    box.style.color = '';
+}
+
+async function refreshPlatformCheck() {
+    const box = document.getElementById('cf-platform-check');
+    if (!box) return;
+    const platforms = getSelectedPlatforms();
+    const platformHosts = getPlatformHostsFromForm();
+    if (platforms.length === 0) {
+        renderPlatformCheck([]);
+        return;
+    }
+    box.textContent = '平台自检中 ...';
+    box.style.color = '#6b7280';
+    try {
+        const items = await fetchPlatformCheck(platforms, platformHosts);
+        renderPlatformCheck(items);
+    } catch (err) {
+        renderPlatformCheck([], err.message || String(err));
+    }
+}
+
+async function ensurePlatformReady(platforms, platformHosts) {
+    try {
+        const items = await fetchPlatformCheck(platforms, platformHosts);
+        renderPlatformCheck(items);
+        const available = items.filter(it => String(it.status || '') !== 'down');
+        const down = items.filter(it => String(it.status || '') === 'down');
+        if (available.length === 0) {
+            toast('所选平台当前均不可用，请切换网络或更换平台后再试', 'danger');
+            return false;
+        }
+        if (down.length > 0) {
+            const names = down.map(it => it.display_name || it.platform).join('、');
+            toast(`提示：${names} 当前不可用，采集时将自动跳过`, 'danger');
+        }
+        return true;
+    } catch (err) {
+        renderPlatformCheck([], err.message || String(err));
+        toast('平台自检失败，请稍后重试', 'danger');
+        return false;
+    }
+}
+
+function bindPlatformCheckOnPlatformChange() {
+    const inputs = document.querySelectorAll('input[name="cf-platform"]');
+    inputs.forEach((input) => {
+        if (input.dataset.checkBound === '1') return;
+        input.addEventListener('change', () => {
+            refreshPlatformCheck();
+        });
+        input.dataset.checkBound = '1';
+    });
+    ['cf-host-anjuke', 'cf-host-58'].forEach((id) => {
+        const input = document.getElementById(id);
+        if (!input || input.dataset.checkBound === '1') return;
+        input.addEventListener('change', () => {
+            refreshPlatformCheck();
+        });
+        input.dataset.checkBound = '1';
+    });
+}
+
+function bindCollectSettingsPersistence() {
+    const fixedWindowInput = document.getElementById('cf-fixed-window');
+    if (!fixedWindowInput || fixedWindowInput.dataset.bound === '1') return;
+    fixedWindowInput.addEventListener('change', () => {
+        localStorage.setItem(FIXED_WINDOW_KEY, fixedWindowInput.checked ? '1' : '0');
+        updateFixedWindowHint(fixedWindowInput.checked, getSinceDaysFromForm());
+    });
+    fixedWindowInput.dataset.bound = '1';
+    const sinceInput = document.getElementById('cf-since');
+    if (sinceInput && sinceInput.dataset.bound !== '1') {
+        sinceInput.addEventListener('change', () => {
+            updateFixedWindowHint(!!fixedWindowInput.checked, getSinceDaysFromForm());
+        });
+        sinceInput.dataset.bound = '1';
+    }
+
+    const throttleInput = document.getElementById('cf-throttle-seconds');
+    const cooldownInput = document.getElementById('cf-cooldown-seconds');
+    if (throttleInput && throttleInput.dataset.bound !== '1') {
+        throttleInput.addEventListener('change', () => {
+            const v = Math.max(0, Math.min(30, parseFloat(throttleInput.value) || 0));
+            throttleInput.value = String(v);
+            localStorage.setItem(THROTTLE_SECONDS_KEY, String(v));
+        });
+        throttleInput.dataset.bound = '1';
+    }
+    if (cooldownInput && cooldownInput.dataset.bound !== '1') {
+        cooldownInput.addEventListener('change', () => {
+            const v = Math.max(0, Math.min(1800, parseInt(cooldownInput.value, 10) || 0));
+            cooldownInput.value = String(v);
+            localStorage.setItem(COOLDOWN_SECONDS_KEY, String(v));
+            refreshCooldownHint();
+        });
+        cooldownInput.dataset.bound = '1';
+    }
+    const riskWaitInput = document.getElementById('cf-risk-wait');
+    if (riskWaitInput && riskWaitInput.dataset.bound !== '1') {
+        riskWaitInput.addEventListener('change', () => {
+            const v = Math.max(60, Math.min(1800, parseInt(riskWaitInput.value, 10) || 180));
+            riskWaitInput.value = String(v);
+            localStorage.setItem(RISK_WAIT_SECONDS_KEY, String(v));
+        });
+        riskWaitInput.dataset.bound = '1';
+    }
+    const autoRetryInput = document.getElementById('cf-auto-retry');
+    if (autoRetryInput && autoRetryInput.dataset.bound !== '1') {
+        autoRetryInput.addEventListener('change', () => {
+            localStorage.setItem(AUTO_RETRY_KEY, autoRetryInput.checked ? '1' : '0');
+        });
+        autoRetryInput.dataset.bound = '1';
+    }
+    const retryDelayInput = document.getElementById('cf-retry-delay');
+    if (retryDelayInput && retryDelayInput.dataset.bound !== '1') {
+        retryDelayInput.addEventListener('change', () => {
+            const v = Math.max(1, Math.min(300, parseInt(retryDelayInput.value, 10) || 5));
+            retryDelayInput.value = String(v);
+            localStorage.setItem(RETRY_DELAY_SECONDS_KEY, String(v));
+        });
+        retryDelayInput.dataset.bound = '1';
+    }
+    const autoDowngrade58Input = document.getElementById('cf-auto-downgrade-58-ephemeral');
+    if (autoDowngrade58Input && autoDowngrade58Input.dataset.bound !== '1') {
+        autoDowngrade58Input.addEventListener('change', () => {
+            localStorage.setItem(
+                AUTO_DOWNGRADE_58_EPHEMERAL_KEY,
+                autoDowngrade58Input.checked ? '1' : '0'
+            );
+        });
+        autoDowngrade58Input.dataset.bound = '1';
+    }
+    const manualRegionConfirm58Input = document.getElementById('cf-manual-region-confirm-58');
+    if (manualRegionConfirm58Input && manualRegionConfirm58Input.dataset.bound !== '1') {
+        manualRegionConfirm58Input.addEventListener('change', () => {
+            localStorage.setItem(
+                MANUAL_REGION_CONFIRM_58_KEY,
+                manualRegionConfirm58Input.checked ? '1' : '0'
+            );
+        });
+        manualRegionConfirm58Input.dataset.bound = '1';
+    }
+    const antiDetectionLevelInput = document.getElementById('cf-anti-detection-level');
+    if (antiDetectionLevelInput && antiDetectionLevelInput.dataset.bound !== '1') {
+        antiDetectionLevelInput.addEventListener('change', () => {
+            const level = normalizeAntiDetectionLevel(antiDetectionLevelInput.value);
+            antiDetectionLevelInput.value = level;
+            localStorage.setItem(ANTI_DETECTION_LEVEL_KEY, level);
+        });
+        antiDetectionLevelInput.dataset.bound = '1';
+    }
+
+    ['cf-host-anjuke', 'cf-host-58'].forEach((id) => {
+        const input = document.getElementById(id);
+        if (!input || input.dataset.bound === '1') return;
+        input.addEventListener('change', () => {
+            input.value = normalizeHostInput(input.value);
+        });
+        input.dataset.bound = '1';
+    });
+}
+
+function updateBackendConnectButton() {
+    const btn = document.getElementById('backend-connect-btn');
+    if (!btn) return;
+    btn.disabled = _backendConnectBusy;
+    if (_backendConnectBusy) {
+        btn.textContent = _backendConnected ? '断开中...' : '连接中...';
+    } else {
+        btn.textContent = _backendConnected ? '取消连接' : '连接后端';
+    }
+}
+
+function setBackendStatus(connected, checking = false, manualOff = false) {
+    _backendConnected = !!connected;
+    const pill = document.getElementById('backend-status');
+    const text = document.getElementById('backend-status-text');
+    if (!pill || !text) return;
+
+    pill.classList.remove('backend-ok', 'backend-down', 'backend-checking');
+    if (manualOff) {
+        pill.classList.add('backend-down');
+        text.textContent = '后端已断开';
+        pill.title = '已手动取消后端连接';
+    } else if (checking) {
+        pill.classList.add('backend-checking');
+        text.textContent = '后端检测中';
+        pill.title = '正在检测本地后端连接';
+    } else if (connected) {
+        pill.classList.add('backend-ok');
+        text.textContent = '后端已连接';
+        pill.title = _oneClickRegistered ? '本地后端连接正常（一键连接已启用）' : '本地后端连接正常';
+    } else {
+        pill.classList.add('backend-down');
+        text.textContent = '后端未连接';
+        pill.title = '未检测到本地后端，请先启动 start.bat';
+    }
+    updateBackendConnectButton();
+    updateOneClickInstallButton();
+}
+
+function tryLaunchBackendStarter() {
+    // Use a custom local protocol handler (vaultpro://) to truly launch
+    // start.bat from browser click.
+    try {
+        const token = Date.now().toString(36);
+        const uri = `vaultpro://start-backend?token=${token}`;
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = uri;
+        document.body.appendChild(iframe);
+        setTimeout(() => {
+            try { iframe.remove(); } catch (_) { /* noop */ }
+        }, 1500);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+async function waitForBackendReady(timeoutMs = 30000) {
+    const start = Date.now();
+    while (_backendAutoConnect && Date.now() - start < timeoutMs) {
+        const ok = await pingBackend({ respectToggle: false });
+        if (ok) return true;
+        await sleep(1500);
+    }
+    return false;
+}
+
+async function connectBackendByButton() {
+    _backendAutoConnect = true;
+    localStorage.setItem(BACKEND_AUTO_CONNECT_KEY, '1');
+    setBackendStatus(false, true);
+    const okNow = await pingBackend({ respectToggle: false });
+    if (okNow) {
+        await refreshOneClickStatus();
+        maybeAutoHideBackendPanelAfterConnect();
+        toast('后端已连接，后端面板已自动隐藏', 'success');
+        return true;
+    }
+
+    const launched = tryLaunchBackendStarter();
+    if (launched) {
+        toast('正在尝试一键启动后端（首次可能需允许打开外部应用）...', 'success');
+    } else {
+        toast('一键启动不可用，请先运行 register_vaultpro_protocol.ps1 完成协议注册', 'danger');
+    }
+    const ready = await waitForBackendReady(30000);
+    if (ready) {
+        await refreshOneClickStatus();
+        maybeAutoHideBackendPanelAfterConnect();
+        toast('后端连接成功，后端面板已自动隐藏', 'success');
+        return true;
+    }
+    toast('后端连接失败，请确认 start.bat 是否已启动', 'danger');
+    return false;
+}
+
+async function requestBackendShutdown() {
+    try {
+        const r = await fetch(`${BACKEND_URL}/shutdown`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        return r.ok;
+    } catch (_) {
+        return false;
+    }
+}
+
+async function disconnectBackendByButton() {
+    _backendAutoConnect = false;
+    localStorage.setItem(BACKEND_AUTO_CONNECT_KEY, '0');
+    setBackendStatus(false, false, true);
+    const closed = await requestBackendShutdown();
+    if (closed) {
+        toast('后端已断开', 'danger');
+        return;
+    }
+    toast('已取消后端连接', 'danger');
+    _oneClickSupported = false;
+    _oneClickRegistered = false;
+    updateOneClickInstallButton();
+}
+
+async function toggleBackendConnection() {
+    if (_backendConnectBusy) return;
+    _backendConnectBusy = true;
+    updateBackendConnectButton();
+    try {
+    if (_backendConnected) {
+        await disconnectBackendByButton();
+        return;
+    }
+    await connectBackendByButton();
+    } finally {
+        _backendConnectBusy = false;
+        updateBackendConnectButton();
+    }
+}
+
+function startBackendStatusPolling() {
+    setBackendStatus(false, true);
+    pingBackend({ respectToggle: false }).then((ok) => {
+        if (ok) refreshOneClickStatus();
+    });
+    if (_backendStatusTimer) clearInterval(_backendStatusTimer);
+    _backendStatusTimer = setInterval(() => {
+        pingBackend({ respectToggle: false }).then((ok) => {
+            if (ok) refreshOneClickStatus();
+        });
+    }, 12000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            pingBackend({ respectToggle: false }).then((ok) => {
+                if (ok) refreshOneClickStatus();
+            });
+        }
+    });
+}
+
+/* ========================================================================
+ * 采集面板
+ * ====================================================================== */
+let _currentTaskId = null;
+let _collecting    = false;
+const COOLDOWN_KEY = 'vault_pro_cooldown_until';
+let _floatingProgressReady = false;
+let _manualEditingId = null;
+let _manualEditingSourcePlatform = 'manual';
+let _manualEditingDate = '';
+
+function buildRegionPills() {
+    const wrap = document.getElementById('cf-region-pills');
+    wrap.innerHTML = REGIONS.map(r =>
+        `<label class="pill"><input type="checkbox" name="cf-region" value="${r}"> ${r}</label>`
+    ).join('');
+}
+
+async function openCollectModal() {
+    if (_collecting) return;
+    document.getElementById('collect-modal').classList.add('active');
+    document.getElementById('collect-form').style.display = '';
+    document.getElementById('collect-progress').style.display = 'none';
+    document.getElementById('cf-fill').style.width = '0%';
+    document.getElementById('cf-fill').className = 'progress-fill';
+    document.getElementById('cf-start-btn').disabled = false;
+    document.getElementById('cf-start-btn').textContent = '开始采集';
+    document.getElementById('cf-reset-topup-btn').disabled = false;
+    document.getElementById('cf-reset-topup-btn').textContent = '清空并真实重采';
+    document.getElementById('cf-topup-btn').disabled = false;
+    document.getElementById('cf-topup-btn').textContent = '真实补齐每区50条';
+    const fixedWindowInput = document.getElementById('cf-fixed-window');
+    if (fixedWindowInput) {
+        const saved = localStorage.getItem(FIXED_WINDOW_KEY);
+        fixedWindowInput.checked = saved == null ? true : saved === '1';
+        updateFixedWindowHint(fixedWindowInput.checked, getSinceDaysFromForm());
+    }
+    const throttleInput = document.getElementById('cf-throttle-seconds');
+    if (throttleInput) {
+        const saved = localStorage.getItem(THROTTLE_SECONDS_KEY);
+        if (saved != null) {
+            throttleInput.value = saved;
+        } else {
+            const legacyBase = parseFloat(localStorage.getItem('vault_pro_throttle_base_seconds') || '3');
+            const legacyJitter = parseFloat(localStorage.getItem('vault_pro_throttle_jitter_seconds') || '4');
+            const migrated = Math.max(0, Math.min(30, legacyBase + legacyJitter * 0.5));
+            throttleInput.value = String(migrated);
+        }
+    }
+    const cooldownInput = document.getElementById('cf-cooldown-seconds');
+    if (cooldownInput) {
+        const savedCooldown = localStorage.getItem(COOLDOWN_SECONDS_KEY);
+        cooldownInput.value = savedCooldown == null ? String(DEFAULT_COOLDOWN_MS / 1000) : savedCooldown;
+    }
+    const riskWaitInput = document.getElementById('cf-risk-wait');
+    if (riskWaitInput) {
+        const savedRiskWait = localStorage.getItem(RISK_WAIT_SECONDS_KEY);
+        riskWaitInput.value = savedRiskWait == null ? '300' : savedRiskWait;
+    }
+    const autoRetryInput = document.getElementById('cf-auto-retry');
+    if (autoRetryInput) {
+        autoRetryInput.checked = localStorage.getItem(AUTO_RETRY_KEY) === '1';
+    }
+    const retryDelayInput = document.getElementById('cf-retry-delay');
+    if (retryDelayInput) {
+        const savedRetryDelay = localStorage.getItem(RETRY_DELAY_SECONDS_KEY);
+        retryDelayInput.value = savedRetryDelay == null ? '5' : savedRetryDelay;
+    }
+    const autoDowngrade58Input = document.getElementById('cf-auto-downgrade-58-ephemeral');
+    if (autoDowngrade58Input) {
+        const saved = localStorage.getItem(AUTO_DOWNGRADE_58_EPHEMERAL_KEY);
+        autoDowngrade58Input.checked = saved == null ? true : saved === '1';
+    }
+    const manualRegionConfirm58Input = document.getElementById('cf-manual-region-confirm-58');
+    if (manualRegionConfirm58Input) {
+        const saved = localStorage.getItem(MANUAL_REGION_CONFIRM_58_KEY);
+        manualRegionConfirm58Input.checked = saved == null ? true : saved === '1';
+    }
+    const antiDetectionLevelInput = document.getElementById('cf-anti-detection-level');
+    if (antiDetectionLevelInput) {
+        const saved = localStorage.getItem(ANTI_DETECTION_LEVEL_KEY);
+        if (saved != null) {
+            antiDetectionLevelInput.value = normalizeAntiDetectionLevel(saved);
+        } else {
+            const legacy = localStorage.getItem('vault_pro_anti_detection_mode');
+            antiDetectionLevelInput.value = legacy === '0' ? 'low' : 'medium';
+        }
+    }
+    const hostAnjukeInput = document.getElementById('cf-host-anjuke');
+    if (hostAnjukeInput) {
+        hostAnjukeInput.value = DEFAULT_PLATFORM_HOSTS.anjuke;
+    }
+    const host58Input = document.getElementById('cf-host-58');
+    if (host58Input) {
+        host58Input.value = DEFAULT_PLATFORM_HOSTS['58'];
+    }
+
+    const ok = await pingBackend();
+    document.getElementById('collect-backend-warn').style.display = ok ? 'none' : '';
+    if (ok) {
+        await refreshPlatformCheck();
+    } else {
+        renderPlatformCheck([], '后端未连接，无法执行平台自检');
+    }
+
+    refreshCooldownHint();
+}
+
+function closeCollectModal() {
+    if (_collecting) {
+        if (!confirm('任务正在运行，关闭后台仍会继续；确认关闭面板？')) return;
+    }
+    document.getElementById('collect-modal').classList.remove('active');
+}
+
+function openCollectSuccessModal(msg) {
+    const text = document.getElementById('collect-success-text');
+    if (text) {
+        text.textContent = msg || '采集任务已完成。';
+    }
+    document.getElementById('collect-success-modal').classList.add('active');
+}
+
+function closeCollectSuccessModal() {
+    document.getElementById('collect-success-modal').classList.remove('active');
+}
+
+function refreshCooldownHint() {
+    const until = parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10);
+    const left  = until - Date.now();
+    const btn   = document.getElementById('cf-start-btn');
+    const info  = document.getElementById('cf-cooldown');
+    if (left > 0) {
+        const sec = Math.ceil(left / 1000);
+        info.textContent = `节流中：还需 ${Math.floor(sec/60)}分${sec%60}秒后才能再次采集`;
+        btn.disabled = true;
+        setTimeout(refreshCooldownHint, 1000);
+    } else {
+        info.textContent = '';
+        if (!_collecting) btn.disabled = false;
+    }
+}
+
+function toggleFloatingProgressWindow() {
+    const panel = document.getElementById('floating-progress');
+    if (!panel) return;
+    const hidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !hidden);
+}
+
+function initFloatingProgressWindow() {
+    if (_floatingProgressReady) return;
+    const panel = document.getElementById('floating-progress');
+    const head = document.getElementById('floating-progress-head');
+    const minBtn = document.getElementById('floating-progress-min-btn');
+    const closeBtn = document.getElementById('floating-progress-close-btn');
+    if (!panel || !head || !minBtn || !closeBtn) return;
+
+    const savedPosRaw = localStorage.getItem(FLOATING_PROGRESS_POS_KEY);
+    if (savedPosRaw) {
+        try {
+            const saved = JSON.parse(savedPosRaw);
+            if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+                panel.style.left = `${Math.max(8, saved.x)}px`;
+                panel.style.top = `${Math.max(8, saved.y)}px`;
+                panel.style.right = 'auto';
+                panel.style.bottom = 'auto';
+            }
+        } catch (_) { /* ignore */ }
+    }
+
+    let dragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+    const startDrag = (event) => {
+        if (event.target && event.target.closest && event.target.closest('.floating-progress-btn')) return;
+        dragging = true;
+        const rect = panel.getBoundingClientRect();
+        offsetX = event.clientX - rect.left;
+        offsetY = event.clientY - rect.top;
+        panel.style.left = `${rect.left}px`;
+        panel.style.top = `${rect.top}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        document.body.style.userSelect = 'none';
+    };
+    const moveDrag = (event) => {
+        if (!dragging) return;
+        const maxX = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
+        const maxY = Math.max(8, window.innerHeight - panel.offsetHeight - 8);
+        const x = Math.max(8, Math.min(maxX, event.clientX - offsetX));
+        const y = Math.max(8, Math.min(maxY, event.clientY - offsetY));
+        panel.style.left = `${x}px`;
+        panel.style.top = `${y}px`;
+    };
+    const stopDrag = () => {
+        if (!dragging) return;
+        dragging = false;
+        document.body.style.userSelect = '';
+        const x = parseFloat(panel.style.left);
+        const y = parseFloat(panel.style.top);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+            localStorage.setItem(FLOATING_PROGRESS_POS_KEY, JSON.stringify({ x, y }));
+        }
+    };
+
+    head.addEventListener('mousedown', startDrag);
+    window.addEventListener('mousemove', moveDrag);
+    window.addEventListener('mouseup', stopDrag);
+    minBtn.addEventListener('click', () => {
+        panel.classList.toggle('minimized');
+        minBtn.textContent = panel.classList.contains('minimized') ? '+' : '-';
+        minBtn.title = panel.classList.contains('minimized') ? '展开' : '最小化';
+    });
+    closeBtn.addEventListener('click', () => {
+        panel.classList.add('hidden');
+    });
+    _floatingProgressReady = true;
+}
+
+function updateFloatingProgress(ratio, msg, kind, options = {}) {
+    const panel = document.getElementById('floating-progress');
+    const title = document.getElementById('floating-progress-title');
+    const fill = document.getElementById('floating-progress-fill');
+    const percent = document.getElementById('floating-progress-percent');
+    const state = document.getElementById('floating-progress-state');
+    const message = document.getElementById('floating-progress-msg');
+    if (!panel || !fill || !percent || !state || !message) return;
+    const titleText = options && options.title ? String(options.title) : (_collecting ? '采集进度' : '任务进度');
+    if (title) title.textContent = titleText;
+    const pct = Math.max(0, Math.min(100, Math.round((ratio || 0) * 100)));
+    fill.style.width = `${pct}%`;
+    fill.className = 'progress-fill' + (kind ? ' ' + kind : '');
+    percent.textContent = `${pct}%`;
+    message.textContent = msg || (_collecting ? '采集中 ...' : '等待开始采集');
+    panel.classList.remove('state-success', 'state-danger');
+    if (options && options.stateText) {
+        state.textContent = String(options.stateText);
+        if (kind === 'success') panel.classList.add('state-success');
+        if (kind === 'danger') panel.classList.add('state-danger');
+    } else if (kind === 'success') {
+        panel.classList.add('state-success');
+        state.textContent = '采集成功';
+    } else if (kind === 'danger') {
+        panel.classList.add('state-danger');
+        state.textContent = '采集失败';
+    } else if (_collecting) {
+        state.textContent = '采集中';
+    } else {
+        state.textContent = '等待中';
+    }
+    const forceShow = !!(options && options.forceShow);
+    if ((forceShow || _collecting) && panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+    }
+}
+
+async function startCollect() {
+    const platforms = Array.from(document.querySelectorAll('input[name="cf-platform"]:checked')).map(i => i.value);
+    if (platforms.length === 0) { toast('请至少勾选一个数据来源', 'danger'); return; }
+    const platformHosts = getPlatformHostsFromForm();
+
+    const regions = Array.from(document.querySelectorAll('input[name="cf-region"]:checked')).map(i => i.value);
+    const target  = Math.max(10, Math.min(100, parseInt(document.getElementById('cf-target').value, 10) || 80));
+    const since   = parseInt(document.getElementById('cf-since').value, 10);
+    const requestedFixedWindow = !!document.getElementById('cf-fixed-window')?.checked;
+    const fixedWindow = resolveFixedWindowForRun(requestedFixedWindow, since, '本次采集');
+    const settings = getThrottleSettingsFromForm();
+    setFixedWindowUiState(fixedWindow);
+    localStorage.setItem(THROTTLE_SECONDS_KEY, String(settings.throttleSeconds));
+    localStorage.setItem(COOLDOWN_SECONDS_KEY, String(settings.cooldownSeconds));
+    localStorage.setItem(RISK_WAIT_SECONDS_KEY, String(settings.riskWaitSeconds));
+    localStorage.setItem(ANTI_DETECTION_LEVEL_KEY, settings.antiDetectionLevel);
+    localStorage.setItem(
+        AUTO_DOWNGRADE_58_EPHEMERAL_KEY,
+        settings.autoDowngrade58Ephemeral ? '1' : '0'
+    );
+    localStorage.setItem(
+        MANUAL_REGION_CONFIRM_58_KEY,
+        settings.manualRegionConfirm58 ? '1' : '0'
+    );
+    localStorage.setItem(AUTO_RETRY_KEY, settings.autoRetryEnabled ? '1' : '0');
+    localStorage.setItem(RETRY_DELAY_SECONDS_KEY, String(settings.retryDelaySeconds));
+
+    const ok = await pingBackend();
+    if (!ok) {
+        document.getElementById('collect-backend-warn').style.display = '';
+        toast('未检测到本地后端，请先启动 start.bat', 'danger');
+        return;
+    }
+    if (!(await ensurePlatformReady(platforms, platformHosts))) return;
+
+    _collecting = true;
+    document.getElementById('collect-form').style.display = 'none';
+    document.getElementById('collect-progress').style.display = '';
+    document.getElementById('cf-start-btn').disabled = true;
+    document.getElementById('cf-start-btn').textContent = '采集中 ...';
+    const maxAttempts = settings.autoRetryEnabled ? 2 : 1;
+    const exclusionSnapshot = await buildCollectExclusionSnapshot();
+    const payload = {
+        platforms,
+        regions,
+        target,
+        since_days: since,
+        fixed_window: fixedWindow,
+        throttle_seconds: settings.throttleSeconds,
+        risk_wait_seconds: settings.riskWaitSeconds,
+        platform_hosts: platformHosts,
+        auto_downgrade_58_ephemeral: settings.autoDowngrade58Ephemeral,
+        manual_region_confirm_58: settings.manualRegionConfirm58,
+        anti_detection_level: settings.antiDetectionLevel,
+        anti_detection_mode: true,
+        exclude_hash_keys: exclusionSnapshot.exclude_hash_keys,
+        exclude_source_urls: exclusionSnapshot.exclude_source_urls,
+    };
+
+    let final = null;
+    let lastError = '';
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const tip = maxAttempts > 1 ? `（第 ${attempt}/${maxAttempts} 次）` : '';
+        setProgress(0.02, `正在向后端发起任务 ...${tip}`);
+
+        try {
+            const res = await startCollectRequest(payload);
+            _currentTaskId = res.task_id;
+            if (attempt === 1) {
+                localStorage.setItem(COOLDOWN_KEY, String(Date.now() + getCooldownMs()));
+            }
+            final = await pollCollectTask(_currentTaskId, (st) => {
+                setProgress(st.progress || 0, st.message || '');
+            });
+            break;
+        } catch (err) {
+            lastError = err.message || String(err);
+            const retryable = isRetryableCollectError(lastError);
+            if (attempt >= maxAttempts || !retryable) {
+                if (!retryable && settings.autoRetryEnabled) {
+                    toast('本次失败属于验证码/风控类问题，已跳过自动重试', 'danger');
+                }
+                break;
+            }
+            const friendly = humanizeCollectError(lastError);
+            toast(`第 ${attempt} 次失败，${settings.retryDelaySeconds}s 后自动重试`, 'danger');
+            for (let sec = settings.retryDelaySeconds; sec >= 1; sec--) {
+                setProgress(
+                    0.03,
+                    `第 ${attempt} 次失败：${friendly}；${sec}s 后自动重试 ...`,
+                    'danger'
+                );
+                await sleep(1000);
+            }
+        }
+    }
+
+    if (!final) {
+        finishCollectError(lastError || '采集失败');
+        return;
+    }
+
+    _collecting = false;
+
+    if (!final.items || final.items.length === 0) {
+        setProgress(1, `${final.message || '未拉到任何房源'}（建议将时间范围调大后重试）`);
+        document.getElementById('cf-start-btn').disabled = false;
+        document.getElementById('cf-start-btn').textContent = '重新采集';
+        return;
+    }
+
+    const importResult = await importCollectedItemsDirect(final.items, '');
+    const added = importResult.added || 0;
+    const updated = importResult.updated || 0;
+    const heldForReview = importResult.reviewItems || [];
+    await render();
+    if ((added > 0 || updated > 0) && heldForReview.length === 0) {
+        const successMsg = `完成：拿到 ${final.items.length} 条，新增 ${added} 条，更新 ${updated} 条`;
+        setProgress(1, successMsg, 'success');
+        toast(`采集完成：新增 ${added} 条，更新 ${updated} 条`, 'success');
+        closeCollectModal();
+        openCollectSuccessModal(successMsg);
+        document.getElementById('cf-start-btn').disabled = false;
+        document.getElementById('cf-start-btn').textContent = '重新采集';
+        return;
+    }
+
+    if (heldForReview.length > 0) {
+        setProgress(
+            1,
+            `完成：新增 ${added} 条，更新 ${updated} 条，另有 ${heldForReview.length} 条面积异常待校对`,
+            'danger'
+        );
+        await sleep(400);
+        closeCollectModal();
+        await openReviewModal(heldForReview);
+        return;
+    }
+
+    setProgress(1, `完成：拿到 ${final.items.length} 条，但新增/更新均为 0，进入校对面板 ...`, 'danger');
+    await sleep(400);
+    closeCollectModal();
+    await openReviewModal(final.items);
+}
+
+function loadCommunityPriceHistory() {
+    try {
+        const raw = localStorage.getItem(COMMUNITY_PRICE_HISTORY_KEY);
+        const data = JSON.parse(raw || '[]');
+        if (!Array.isArray(data)) return [];
+        return data
+            .map((x) => ({
+                community: String(x.community || '').trim(),
+                region: String(x.region || '').trim(),
+                unitPrice: Math.round(Number(x.unitPrice) || 0),
+                sourceUrl: String(x.sourceUrl || '').trim(),
+                date: String(x.date || '').trim(),
+            }))
+            .filter((x) => x.community && x.unitPrice > 0 && x.date);
+    } catch (_) {
+        return [];
+    }
+}
+
+function saveCommunityPriceHistory(items) {
+    localStorage.setItem(COMMUNITY_PRICE_HISTORY_KEY, JSON.stringify(items || []));
+}
+
+function mergeCommunityPriceHistory(existing, incoming) {
+    const map = new Map();
+    for (const row of existing || []) {
+        const month = String(row.date || '').slice(0, 7);
+        if (!month) continue;
+        const key = `${row.community}|${row.region}|${month}`;
+        map.set(key, row);
+    }
+    for (const row of incoming || []) {
+        const month = String(row.date || '').slice(0, 7);
+        if (!row.community || !month || !(+row.unitPrice > 0)) continue;
+        const key = `${row.community}|${row.region}|${month}`;
+        const prev = map.get(key);
+        if (!prev || String(row.date) > String(prev.date)) {
+            map.set(key, {
+                community: String(row.community || '').trim(),
+                region: String(row.region || '').trim(),
+                unitPrice: Math.round(Number(row.unitPrice) || 0),
+                sourceUrl: String(row.sourceUrl || '').trim(),
+                date: String(row.date || '').trim(),
+            });
+        }
+    }
+    return Array.from(map.values()).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+}
+
+function aggregateCommunityMonthly(items, communityFilter) {
+    const monthly = new Map();
+    for (const row of items || []) {
+        if (communityFilter && row.community !== communityFilter) continue;
+        const month = String(row.date || '').slice(0, 7);
+        if (!month || !(+row.unitPrice > 0)) continue;
+        const slot = monthly.get(month) || { sum: 0, count: 0 };
+        slot.sum += (+row.unitPrice || 0);
+        slot.count += 1;
+        monthly.set(month, slot);
+    }
+    return Array.from(monthly.entries())
+        .map(([month, slot]) => ({ month, avg: Math.round(slot.sum / Math.max(1, slot.count)) }))
+        .sort((a, b) => String(a.month).localeCompare(String(b.month)));
+}
+
+function drawCommunityPriceChart(points) {
+    const svg = document.getElementById('cp-chart');
+    if (!svg) return;
+    if (!points || points.length === 0) {
+        svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#94a3b8" font-size="14">暂无月度数据</text>';
+        return;
+    }
+    const W = 760;
+    const H = 280;
+    const ml = 54;
+    const mr = 22;
+    const mt = 20;
+    const mb = 40;
+    const minVal = Math.min(...points.map((p) => p.avg));
+    const maxVal = Math.max(...points.map((p) => p.avg));
+    const span = Math.max(1, maxVal - minVal);
+    const xAt = (idx) => ml + (idx * (W - ml - mr)) / Math.max(1, points.length - 1);
+    const yAt = (val) => mt + (H - mt - mb) * (1 - (val - minVal) / span);
+    const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xAt(i).toFixed(1)} ${yAt(p.avg).toFixed(1)}`).join(' ');
+
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => {
+        const v = Math.round(minVal + span * t);
+        return { y: yAt(v), v };
+    });
+    const xTicks = points.map((p, i) => ({ x: xAt(i), label: p.month }));
+
+    svg.innerHTML = `
+        <rect x="0" y="0" width="${W}" height="${H}" fill="#fff"></rect>
+        ${yTicks.map((t) => `<line x1="${ml}" y1="${t.y}" x2="${W - mr}" y2="${t.y}" stroke="#e2e8f0"></line>`).join('')}
+        ${yTicks.map((t) => `<text x="${ml - 8}" y="${t.y + 4}" text-anchor="end" fill="#64748b" font-size="11">${t.v}</text>`).join('')}
+        <line x1="${ml}" y1="${mt}" x2="${ml}" y2="${H - mb}" stroke="#94a3b8"></line>
+        <line x1="${ml}" y1="${H - mb}" x2="${W - mr}" y2="${H - mb}" stroke="#94a3b8"></line>
+        <path d="${path}" fill="none" stroke="#2563eb" stroke-width="2.5"></path>
+        ${points.map((p, i) => `<circle cx="${xAt(i)}" cy="${yAt(p.avg)}" r="3.5" fill="#2563eb"><title>${p.month}: ${p.avg} 元/㎡</title></circle>`).join('')}
+        ${xTicks.map((t, idx) => idx % Math.max(1, Math.ceil(points.length / 8)) === 0 ? `<text x="${t.x}" y="${H - 12}" text-anchor="middle" fill="#64748b" font-size="11">${t.label}</text>` : '').join('')}
+    `;
+}
+
+function refreshCommunityFilterOptions(items) {
+    const el = document.getElementById('cp-community-filter');
+    if (!el) return;
+    const old = el.value || '';
+    const names = Array.from(new Set((items || []).map((x) => String(x.community || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    el.innerHTML = '<option value="">全部小区（全局均价）</option>' + names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    if (old && names.includes(old)) el.value = old;
+}
+
+function renderCommunityPricePanel() {
+    const history = loadCommunityPriceHistory();
+    refreshCommunityFilterOptions(history);
+    const filter = document.getElementById('cp-community-filter')?.value || '';
+    const points = aggregateCommunityMonthly(history, filter);
+    drawCommunityPriceChart(points);
+
+    const tbody = document.getElementById('cp-table-body');
+    if (!tbody) return;
+    const rows = history
+        .filter((x) => !filter || x.community === filter)
+        .slice(0, 120)
+        .map((row) => {
+            const month = String(row.date || '').slice(0, 7);
+            return `<tr>
+                <td class="mono">${escapeHtml(month)}</td>
+                <td>${escapeHtml(row.community || '')}</td>
+                <td><span class="badge">${escapeHtml(row.region || '-')}</span></td>
+                <td class="mono">${(+row.unitPrice || 0).toLocaleString()}</td>
+                <td class="mono" style="font-size:11px; color:var(--text-muted)">${escapeHtml(row.date || '')}</td>
+            </tr>`;
+        }).join('');
+    tbody.innerHTML = rows || '<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:16px;">暂无记录</td></tr>';
+}
+
+let _communityCollecting = false;
+
+async function openCommunityPriceModal() {
+    document.getElementById('community-price-modal').classList.add('active');
+    const maxPagesInput = document.getElementById('cp-max-pages');
+    const riskWaitInput = document.getElementById('cp-risk-wait');
+    const antiLevelInput = document.getElementById('cp-anti-level');
+    if (maxPagesInput) {
+        maxPagesInput.value = localStorage.getItem(COMMUNITY_PRICE_MAX_PAGES_KEY) || '6';
+    }
+    if (riskWaitInput) {
+        riskWaitInput.value = localStorage.getItem(COMMUNITY_PRICE_RISK_WAIT_KEY) || '180';
+    }
+    if (antiLevelInput) {
+        antiLevelInput.value = normalizeAntiDetectionLevel(localStorage.getItem(COMMUNITY_PRICE_ANTI_LEVEL_KEY) || 'medium');
+    }
+    renderCommunityPricePanel();
+}
+
+function closeCommunityPriceModal() {
+    if (_communityCollecting) {
+        if (!confirm('采集进行中，确认关闭面板？')) return;
+    }
+    document.getElementById('community-price-modal').classList.remove('active');
+}
+
+async function startCommunityPriceCollect() {
+    if (_communityCollecting) return;
+    const ok = await pingBackend();
+    if (!ok) {
+        toast('未检测到本地后端，请先启动 start.bat', 'danger');
+        return;
+    }
+    const startUrl = String(document.getElementById('cp-start-url')?.value || '').trim() || 'https://lvliang.58.com/xiaoqu/';
+    const maxPages = Math.max(1, Math.min(20, parseInt(document.getElementById('cp-max-pages')?.value, 10) || 6));
+    const riskWait = Math.max(60, Math.min(1800, parseInt(document.getElementById('cp-risk-wait')?.value, 10) || 180));
+    const antiLevel = normalizeAntiDetectionLevel(document.getElementById('cp-anti-level')?.value || 'medium');
+    localStorage.setItem(COMMUNITY_PRICE_MAX_PAGES_KEY, String(maxPages));
+    localStorage.setItem(COMMUNITY_PRICE_RISK_WAIT_KEY, String(riskWait));
+    localStorage.setItem(COMMUNITY_PRICE_ANTI_LEVEL_KEY, antiLevel);
+
+    const btn = document.getElementById('cp-start-btn');
+    const status = document.getElementById('cp-status');
+    _communityCollecting = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '采集中 ...';
+    }
+    if (status) status.textContent = '正在向后端发起任务 ...';
+
+    try {
+        const res = await startCommunityPriceCollectRequest({
+            start_url: startUrl,
+            max_pages: maxPages,
+            risk_wait_seconds: riskWait,
+            anti_detection_level: antiLevel,
+        });
+        const final = await pollCommunityPriceTask(res.task_id, (st) => {
+            if (status) status.textContent = st.message || '采集中 ...';
+        });
+        const merged = mergeCommunityPriceHistory(loadCommunityPriceHistory(), final.items || []);
+        saveCommunityPriceHistory(merged);
+        renderCommunityPricePanel();
+        if (status) status.textContent = `完成：新增 ${Array.isArray(final.items) ? final.items.length : 0} 条`;
+        toast(`小区均价采集完成：${Array.isArray(final.items) ? final.items.length : 0} 条`, 'success');
+    } catch (err) {
+        if (status) status.textContent = `失败：${err.message || String(err)}`;
+        toast(`小区均价采集失败：${err.message || String(err)}`, 'danger');
+    } finally {
+        _communityCollecting = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '开始采集';
+        }
+    }
+}
+
+function updateCollectStatusBar(ratio, msg, kind) {
+    const wrap = document.getElementById('collect-status-pill');
+    const statusText = document.getElementById('collect-status-text');
+    const percentText = document.getElementById('collect-status-percent');
+    const fill = document.getElementById('collect-status-fill');
+    const msgEl = document.getElementById('collect-status-msg');
+    if (!wrap || !statusText || !percentText || !fill || !msgEl) return;
+    const pct = Math.max(0, Math.min(100, Math.round((ratio || 0) * 100)));
+    percentText.textContent = `${pct}%`;
+    fill.style.width = `${pct}%`;
+    fill.className = 'progress-fill' + (kind ? ' ' + kind : '');
+    msgEl.textContent = msg || (_collecting ? '采集中 ...' : '等待开始采集');
+
+    wrap.classList.remove('idle', 'running', 'success', 'failed');
+    if (kind === 'success') {
+        wrap.classList.add('success');
+        statusText.textContent = '采集成功';
+    } else if (kind === 'danger') {
+        wrap.classList.add('failed');
+        statusText.textContent = '采集失败';
+    } else if (_collecting) {
+        wrap.classList.add('running');
+        statusText.textContent = '采集中';
+    } else {
+        wrap.classList.add('idle');
+        statusText.textContent = '采集空闲';
+    }
+}
+
+function setProgress(ratio, msg, kind) {
+    const fill = document.getElementById('cf-fill');
+    fill.style.width = Math.round((ratio || 0) * 100) + '%';
+    fill.className = 'progress-fill' + (kind ? ' ' + kind : '');
+    document.getElementById('cf-msg').textContent = msg || '';
+    updateCollectStatusBar(ratio, msg, kind);
+    updateFloatingProgress(ratio, msg, kind);
+}
+
+function finishCollectError(msg) {
+    _collecting = false;
+    const friendly = humanizeCollectError(msg);
+    setProgress(1, '失败：' + friendly, 'danger');
+    document.getElementById('cf-start-btn').disabled = false;
+    document.getElementById('cf-start-btn').textContent = '重试';
+    document.getElementById('cf-reset-topup-btn').disabled = false;
+    document.getElementById('cf-reset-topup-btn').textContent = '清空并真实重采';
+    document.getElementById('cf-topup-btn').disabled = false;
+    document.getElementById('cf-topup-btn').textContent = '真实补齐每区50条';
+    toast('采集失败：' + friendly, 'danger');
+}
+
+async function getRegionCounts() {
+    const all = await db.getAll();
+    const counts = Object.fromEntries(REGIONS.map(r => [r, 0]));
+    for (const rec of all) {
+        if (counts[rec.region] != null) counts[rec.region] += 1;
+    }
+    return counts;
+}
+
+const AUTO_IMPORT_MIN_AREA = 10;
+
+function enrichExistingRecord(existing, incoming) {
+    if (!existing || !incoming) return null;
+    // Respect manual entries to avoid overwriting user-curated values.
+    if (String(existing.platform || '') === 'manual') return null;
+    let changed = false;
+    const next = { ...existing };
+
+    const curLayout = normalizeLayout(existing.layout || '');
+    const inLayout = normalizeLayout(incoming.layout || '');
+    if ((existing.layout || '') !== curLayout) {
+        next.layout = curLayout;
+        changed = true;
+    }
+    if (!curLayout && inLayout) {
+        next.layout = inLayout;
+        changed = true;
+    }
+
+    const curDecoration = normalizeDecoration(existing.decoration || '');
+    const inDecoration = normalizeDecoration(incoming.decoration || '');
+    if ((existing.decoration || '') !== curDecoration) {
+        next.decoration = curDecoration;
+        changed = true;
+    }
+    if (!curDecoration && inDecoration) {
+        next.decoration = inDecoration;
+        changed = true;
+    }
+
+    const curOrientation = normalizeOrientation(existing.orientation || '');
+    const inOrientation = normalizeOrientation(incoming.orientation || '');
+    if ((existing.orientation || '') !== curOrientation) {
+        next.orientation = curOrientation;
+        changed = true;
+    }
+    if (!curOrientation && inOrientation) {
+        next.orientation = inOrientation;
+        changed = true;
+    }
+    if (!(+existing.unitPrice) && (+incoming.unitPrice)) {
+        next.unitPrice = +incoming.unitPrice;
+        changed = true;
+    }
+    if (!String(existing.sourceUrl || '').trim() && String(incoming.sourceUrl || '').trim()) {
+        next.sourceUrl = String(incoming.sourceUrl || '').trim();
+        changed = true;
+    }
+    if (!String(existing.date || '').trim() && String(incoming.date || '').trim()) {
+        next.date = String(incoming.date || '').trim();
+        changed = true;
+    }
+    return changed ? next : null;
+}
+
+async function importCollectedItemsDirect(items, fallbackRegion = '') {
+    if (!items || items.length === 0) {
+        return { added: 0, updated: 0, reviewItems: [] };
+    }
+    const existingAll = await db.getAll();
+    const existingByHash = new Map();
+    for (const rec of existingAll) {
+        const key = String(rec.hashKey || '').trim();
+        if (!key || existingByHash.has(key)) continue;
+        existingByHash.set(key, rec);
+    }
+    const dupSet = new Set(existingByHash.keys());
+    const records = [];
+    const updates = [];
+    const reviewItems = [];
+    for (const it of items) {
+        const community = String(it.community || '').trim();
+        const region = String(it.region || fallbackRegion || '').trim();
+        const totalPrice = +it.totalPrice || 0;
+        const area = +it.area || 0;
+        if (!community || !region || !totalPrice || !area) continue;
+
+        const floor = String(it.floor || '').trim();
+        const hashKey = it.hashKey || makeHash(community, area, totalPrice, floor);
+        let unitPrice = +it.unitPrice || 0;
+        if (!unitPrice && totalPrice && area) {
+            unitPrice = Math.round(totalPrice * 10000 / area);
+        }
+        const normalized = {
+            id: makeManualId(),
+            community,
+            region,
+            floor,
+            totalPrice,
+            unitPrice: +unitPrice || 0,
+            area,
+            layout: normalizeLayout(it.layout || ''),
+            decoration: inferDecoration(it),
+            orientation: inferOrientation(it),
+            date: String(it.date || nowStr()),
+            sourceUrl: String(it.sourceUrl || ''),
+            platform: String(it.platform || 'auto_collect'),
+            hashKey,
+        };
+
+        if (dupSet.has(hashKey)) {
+            const existing = existingByHash.get(hashKey);
+            const enriched = enrichExistingRecord(existing, normalized);
+            if (enriched) {
+                updates.push(enriched);
+                existingByHash.set(hashKey, enriched);
+            }
+            continue;
+        }
+        dupSet.add(hashKey);
+
+        if (area > 0 && area < AUTO_IMPORT_MIN_AREA) {
+            reviewItems.push({
+                ...normalized,
+                _holdReason: `面积 ${area}㎡ 小于 ${AUTO_IMPORT_MIN_AREA}㎡`,
+            });
+            continue;
+        }
+
+        records.push(normalized);
+    }
+    const added = records.length === 0 ? 0 : await db.addMany(records);
+    const updated = updates.length === 0 ? 0 : await db.addMany(updates);
+    return { added, updated, reviewItems };
+}
+
+async function startRealTopup(clearFirst = false) {
+    const minCount = 50;
+    const rounds = 1;
+    const regionGapMs = 25000;
+    const maxFailures = 3;
+    const platforms = Array.from(document.querySelectorAll('input[name="cf-platform"]:checked')).map(i => i.value);
+    const platformHosts = getPlatformHostsFromForm();
+    const selectedRegions = Array.from(document.querySelectorAll('input[name="cf-region"]:checked')).map(i => i.value);
+    const regionScope = selectedRegions.length ? selectedRegions : REGIONS;
+    const requestedFixedWindow = !!document.getElementById('cf-fixed-window')?.checked;
+    const settings = getThrottleSettingsFromForm();
+    localStorage.setItem(THROTTLE_SECONDS_KEY, String(settings.throttleSeconds));
+    localStorage.setItem(COOLDOWN_SECONDS_KEY, String(settings.cooldownSeconds));
+    localStorage.setItem(RISK_WAIT_SECONDS_KEY, String(settings.riskWaitSeconds));
+    if (platforms.length === 0) { toast('请至少勾选一个数据来源', 'danger'); return; }
+    const since = parseInt(document.getElementById('cf-since').value, 10);
+    const fixedWindow = false;
+    if (requestedFixedWindow) {
+        setFixedWindowUiState(false);
+        toast('真实补齐已自动切换为多页采集：单页模式容易导致每区只拿到十几条。', 'danger');
+    }
+
+    const ok = await pingBackend();
+    if (!ok) {
+        document.getElementById('collect-backend-warn').style.display = '';
+        toast('未检测到本地后端，请先启动 start.bat', 'danger');
+        return;
+    }
+    if (!(await ensurePlatformReady(platforms, platformHosts))) return;
+
+    const confirmText = clearFirst
+        ? `将先清空本地房源库，再在 ${regionScope.length} 个区县中自动采集真实房源，目标每区 ${minCount} 条。此操作不可撤销，是否继续？`
+        : `将在 ${regionScope.length} 个区县中自动采集并直接入库真实房源，直到每区尽量达到 ${minCount} 条。是否继续？`;
+    if (!confirm(confirmText)) return;
+
+    _collecting = true;
+    const startBtn = document.getElementById('cf-start-btn');
+    const resetTopupBtn = document.getElementById('cf-reset-topup-btn');
+    const topupBtn = document.getElementById('cf-topup-btn');
+    document.getElementById('collect-form').style.display = 'none';
+    document.getElementById('collect-progress').style.display = '';
+    startBtn.disabled = true;
+    resetTopupBtn.disabled = true;
+    topupBtn.disabled = true;
+    startBtn.textContent = '采集中 ...';
+    resetTopupBtn.textContent = clearFirst ? '清空中 ...' : '清空并真实重采';
+    topupBtn.textContent = '补齐中 ...';
+
+    let totalAdded = 0;
+    let zeroAddStreak = 0;
+    const failures = [];
+
+    try {
+        if (clearFirst) {
+            setProgress(0.01, '正在清空本地库 ...');
+            await db.clear();
+            await render();
+        }
+        for (let round = 1; round <= rounds; round++) {
+            const counts = await getRegionCounts();
+            const pending = regionScope.filter(r => (counts[r] || 0) < minCount);
+            if (pending.length === 0) break;
+
+            for (let i = 0; i < pending.length; i++) {
+                if (failures.length >= maxFailures) {
+                    throw new Error('检测到连续失败，已自动暂停以避免触发风控');
+                }
+                const region = pending[i];
+                const current = counts[region] || 0;
+                const need = minCount - current;
+                const target = Math.max(20, Math.min(60, need * 2));
+                const sinceDays = since;
+                const base = ((round - 1) + i / pending.length) / rounds;
+                const step = (1 / pending.length) / rounds;
+
+                setProgress(base, `[第${round}轮] ${region} 当前 ${current}/${minCount}，采集中 ...`);
+                let task;
+                try {
+                    const exclusionSnapshot = await buildCollectExclusionSnapshot();
+                    task = await startCollectRequest({
+                        platforms,
+                        regions: [region],
+                        target,
+                        since_days: sinceDays,
+                        fixed_window: fixedWindow,
+                        throttle_seconds: settings.throttleSeconds,
+                        risk_wait_seconds: settings.riskWaitSeconds,
+                        platform_hosts: platformHosts,
+                        auto_downgrade_58_ephemeral: settings.autoDowngrade58Ephemeral,
+                        manual_region_confirm_58: settings.manualRegionConfirm58,
+                        anti_detection_level: settings.antiDetectionLevel,
+                        anti_detection_mode: true,
+                        exclude_hash_keys: exclusionSnapshot.exclude_hash_keys,
+                        exclude_source_urls: exclusionSnapshot.exclude_source_urls,
+                    });
+                } catch (err) {
+                    failures.push(`${region}: ${err.message || String(err)}`);
+                    continue;
+                }
+
+                _currentTaskId = task.task_id;
+                let final;
+                try {
+                    final = await pollCollectTask(_currentTaskId, (st) => {
+                        const rp = Math.max(0, Math.min(1, st.progress || 0));
+                        setProgress(base + step * rp, `[第${round}轮] ${region}：${st.message || '采集中 ...'}`);
+                    });
+                } catch (err) {
+                    failures.push(`${region}: ${err.message || String(err)}`);
+                    continue;
+                }
+
+                if (isRiskControlMessage(final.message)) {
+                    throw new Error(`在 ${region} 检测到平台风控（访问频繁/验证码），已自动停止以避免持续刷新。请先手动完成验证后重试。`);
+                }
+
+                const importResult = await importCollectedItemsDirect(final.items || [], region);
+                const added = importResult.added || 0;
+                const updated = importResult.updated || 0;
+                const heldCount = (importResult.reviewItems || []).length;
+                totalAdded += added;
+                zeroAddStreak = (added > 0 || heldCount > 0) ? 0 : zeroAddStreak + 1;
+                const latestCounts = await getRegionCounts();
+                setProgress(
+                    base + step,
+                    `[第${round}轮] ${region} 完成：新增 ${added} 条，更新 ${updated} 条，拦截 ${heldCount} 条（面积异常），当前 ${latestCounts[region] || 0}/${minCount}`
+                );
+                if (zeroAddStreak >= 3) {
+                    throw new Error('连续 3 个区县无新增，已自动停止，避免对来源站点持续高频访问。');
+                }
+                if (i < pending.length - 1) {
+                    setProgress(base + step, `[第${round}轮] ${region} 完成，等待 ${Math.round(regionGapMs / 1000)} 秒后继续 ...`);
+                    await sleep(regionGapMs);
+                }
+            }
+        }
+    } catch (err) {
+        finishCollectError(err.message || String(err));
+        return;
+    }
+
+    _collecting = false;
+    startBtn.disabled = false;
+    resetTopupBtn.disabled = false;
+    topupBtn.disabled = false;
+    startBtn.textContent = '开始采集';
+    resetTopupBtn.textContent = '清空并真实重采';
+    topupBtn.textContent = '真实补齐每区50条';
+
+    const finalCounts = await getRegionCounts();
+    const lacking = regionScope.filter(r => (finalCounts[r] || 0) < minCount);
+    if (lacking.length === 0) {
+        setProgress(1, `补齐完成：共新增 ${totalAdded} 条，所有区县均达到 ${minCount} 条`, 'success');
+        toast(`真实补齐完成，新增 ${totalAdded} 条`, 'success');
+    } else {
+        const tips = lacking.map(r => `${r}(${finalCounts[r] || 0})`).join('、');
+        setProgress(1, `已新增 ${totalAdded} 条；仍未达标：${tips}`, 'danger');
+        toast(`补齐结束，仍有区县未达到 ${minCount} 条`, 'danger');
+    }
+    await render();
+}
+
+/* ========================================================================
+ * 校对面板
+ * ====================================================================== */
+let _reviewItems  = [];
+let _reviewDupSet = new Set();
+
+async function openReviewModal(items) {
+    _reviewDupSet = await db.getHashSet();
+    _reviewItems  = items.map(it => ({
+        ...it,
+        decoration: inferDecoration(it),
+        orientation: inferOrientation(it),
+        _checked: !_reviewDupSet.has(it.hashKey),
+        _dup:      _reviewDupSet.has(it.hashKey),
+    }));
+    drawReviewTable();
+
+    const total = _reviewItems.length;
+    const dup   = _reviewItems.filter(i => i._dup).length;
+    const held  = _reviewItems.filter(i => i._holdReason).length;
+    document.getElementById('rv-summary').textContent =
+        `采集到 ${total} 条，其中 ${dup} 条与现有库重复（已默认取消勾选），${held} 条为规则拦截待确认`;
+    document.getElementById('review-modal').classList.add('active');
+    updateReviewFooter();
+}
+
+function closeReviewModal() {
+    document.getElementById('review-modal').classList.remove('active');
+    _reviewItems = [];
+}
+
+function drawReviewTable() {
+    const tbody = document.getElementById('rv-tbody');
+    tbody.innerHTML = _reviewItems.map((it, idx) => `
+        <tr class="${it._dup ? 'dup' : ''}">
+            <td><input type="checkbox" data-idx="${idx}" ${it._checked ? 'checked' : ''} onchange="reviewToggleRow(${idx}, this.checked)"></td>
+            <td><span class="badge badge-platform">${escapeHtml(it.platform || '')}</span></td>
+            <td><input class="cell-input" data-idx="${idx}" data-field="community" value="${escapeHtml(it.community)}" oninput="reviewEdit(${idx}, 'community', this.value)"></td>
+            <td>
+                <select class="cell-input" data-idx="${idx}" data-field="region" onchange="reviewEdit(${idx}, 'region', this.value)">
+                    ${REGIONS.map(r => `<option value="${r}" ${r===it.region?'selected':''}>${r}</option>`).join('')}
+                </select>
+            </td>
+            <td><input class="cell-input mono short" type="number" step="0.1" data-idx="${idx}" value="${it.totalPrice || ''}" oninput="reviewEditNum(${idx}, 'totalPrice', this.value)"></td>
+            <td><input class="cell-input mono short" type="number" data-idx="${idx}" value="${it.unitPrice || ''}" oninput="reviewEditNum(${idx}, 'unitPrice', this.value)"></td>
+            <td><input class="cell-input mono short" type="number" step="0.1" data-idx="${idx}" value="${it.area || ''}" oninput="reviewEditNum(${idx}, 'area', this.value)"></td>
+            <td><input class="cell-input short" data-idx="${idx}" value="${escapeHtml(it.layout || '')}" oninput="reviewEdit(${idx}, 'layout', this.value)"></td>
+            <td>
+                <select class="cell-input" data-idx="${idx}" onchange="reviewEdit(${idx}, 'decoration', this.value)">
+                    ${['','豪装','精装','简装','毛坯'].map(d => `<option value="${d}" ${normalizeDecoration(it.decoration||'')===d?'selected':''}>${d || '未填'}</option>`).join('')}
+                </select>
+            </td>
+            <td><input class="cell-input tiny" data-idx="${idx}" value="${escapeHtml(it.orientation || '')}" oninput="reviewEdit(${idx}, 'orientation', this.value)"></td>
+            <td><input class="cell-input short" data-idx="${idx}" value="${escapeHtml(it.floor || '')}" oninput="reviewEdit(${idx}, 'floor', this.value)"></td>
+            <td>${
+                it._holdReason
+                    ? `<span class="badge" title="${escapeHtml(it._holdReason)}" style="background:#fee2e2;color:#991b1b">待校对</span>`
+                    : (it._dup
+                        ? '<span class="badge badge-dup">重复</span>'
+                        : '<span class="badge" style="background:#dcfce7;color:#166534">新</span>')
+            }</td>
+            <td>${it.sourceUrl ? `<a href="${escapeHtml(it.sourceUrl)}" target="_blank" rel="noopener">↗</a>` : '-'}</td>
+        </tr>
+    `).join('');
+}
+
+function reviewEdit(idx, field, value) {
+    if (!_reviewItems[idx]) return;
+    _reviewItems[idx][field] = value;
+    if (['community', 'area', 'totalPrice', 'floor'].includes(field)) {
+        const it = _reviewItems[idx];
+        it.hashKey = makeHash(it.community, it.area, it.totalPrice, it.floor);
+        // 重新判断是否重复
+        const wasDup = it._dup;
+        it._dup = _reviewDupSet.has(it.hashKey);
+        if (wasDup !== it._dup) drawReviewTable();
+    }
+}
+
+function reviewEditNum(idx, field, value) {
+    reviewEdit(idx, field, parseFloat(value) || 0);
+}
+
+function reviewToggleRow(idx, checked) {
+    if (_reviewItems[idx]) _reviewItems[idx]._checked = checked;
+    updateReviewFooter();
+}
+
+function reviewToggleAll(checked) {
+    _reviewItems.forEach(i => i._checked = checked);
+    drawReviewTable();
+    updateReviewFooter();
+}
+
+function reviewSelectNonDup() {
+    _reviewItems.forEach(i => i._checked = !i._dup);
+    drawReviewTable();
+    updateReviewFooter();
+}
+
+function updateReviewFooter() {
+    const sel = _reviewItems.filter(i => i._checked).length;
+    document.getElementById('rv-info').textContent = `已勾选 ${sel} / ${_reviewItems.length} 条`;
+}
+
+async function reviewCommit() {
+    const selected = _reviewItems.filter(i => i._checked);
+    if (selected.length === 0) { toast('未勾选任何条目', 'danger'); return; }
+
+    // 校验最低字段
+    for (const it of selected) {
+        if (!it.community || !it.region || !it.totalPrice || !it.area) {
+            toast(`「${it.community || '(空小区)'}」缺少必填字段（小区/区域/总价/面积）`, 'danger');
+            return;
+        }
+    }
+
+    // 单价缺失则回算
+    selected.forEach(it => {
+        if (!it.unitPrice && it.totalPrice && it.area) {
+            it.unitPrice = Math.round((+it.totalPrice) * 10000 / (+it.area));
+        }
+    });
+
+    // 写入前清掉前端临时字段
+    const records = selected.map(it => ({
+        id: it.id,
+        community: it.community,
+        region: it.region,
+        floor: it.floor || '',
+        totalPrice: +it.totalPrice,
+        unitPrice: +it.unitPrice,
+        area: +it.area,
+        layout: normalizeLayout(it.layout || ''),
+        decoration: inferDecoration(it),
+        orientation: inferOrientation(it),
+        date: it.date || nowStr(),
+        sourceUrl: it.sourceUrl || '',
+        platform: it.platform || 'unknown',
+        hashKey: it.hashKey || makeHash(it.community, it.area, it.totalPrice, it.floor),
+    }));
+
+    const added = await db.addMany(records);
+    toast(`成功入库 ${added} 条`, 'success');
+    closeReviewModal();
+    await render();
+}
+
+/* ========================================================================
+ * 手动新增
+ * ====================================================================== */
+function openManualForm() {
+    const modal = document.getElementById('manual-modal');
+    modal.classList.add('active');
+    _manualEditingId = null;
+    _manualEditingSourcePlatform = 'manual';
+    _manualEditingDate = '';
+    const titleEl = document.getElementById('manual-modal-title');
+    const subEl = document.getElementById('manual-modal-sub');
+    const submitEl = document.getElementById('manual-submit-btn');
+    if (titleEl) titleEl.textContent = '手动新增房源';
+    if (subEl) subEl.textContent = '填写后会立即入库到本地 IndexedDB';
+    if (submitEl) submitEl.textContent = '保存到库';
+    ['mf-community','mf-totalPrice','mf-area','mf-unitPrice','mf-layout','mf-orientation','mf-floor','mf-sourceUrl']
+        .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mf-decoration').value = '';
+    document.getElementById('mf-region').value = '离石';
+    document.getElementById('mf-error').style.display = 'none';
+    document.getElementById('mf-error').textContent = '';
+}
+
+async function openEditForm(e, id) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const rec = await db.getOne(id);
+    if (!rec) {
+        toast('未找到要编辑的记录', 'danger');
+        return;
+    }
+    const modal = document.getElementById('manual-modal');
+    modal.classList.add('active');
+    _manualEditingId = String(rec.id || '');
+    _manualEditingSourcePlatform = String(rec.platform || 'manual');
+    _manualEditingDate = String(rec.date || '');
+    const titleEl = document.getElementById('manual-modal-title');
+    const subEl = document.getElementById('manual-modal-sub');
+    const submitEl = document.getElementById('manual-submit-btn');
+    if (titleEl) titleEl.textContent = '编辑已采集信息';
+    if (subEl) subEl.textContent = '保存后将覆盖当前记录（保留原编号与来源平台）';
+    if (submitEl) submitEl.textContent = '保存修改';
+
+    document.getElementById('mf-community').value = String(rec.community || '');
+    document.getElementById('mf-region').value = String(rec.region || '离石');
+    document.getElementById('mf-totalPrice').value = Number.isFinite(+rec.totalPrice) ? String(+rec.totalPrice) : '';
+    document.getElementById('mf-area').value = Number.isFinite(+rec.area) ? String(+rec.area) : '';
+    document.getElementById('mf-unitPrice').value = Number.isFinite(+rec.unitPrice) ? String(+rec.unitPrice) : '';
+    document.getElementById('mf-layout').value = String(rec.layout || '');
+    document.getElementById('mf-decoration').value = normalizeDecoration(rec.decoration || '');
+    document.getElementById('mf-orientation').value = String(rec.orientation || '');
+    document.getElementById('mf-floor').value = String(rec.floor || '');
+    document.getElementById('mf-sourceUrl').value = String(rec.sourceUrl || '');
+    document.getElementById('mf-error').style.display = 'none';
+    document.getElementById('mf-error').textContent = '';
+}
+
+function closeManualForm() {
+    document.getElementById('manual-modal').classList.remove('active');
+    _manualEditingId = null;
+    _manualEditingSourcePlatform = 'manual';
+    _manualEditingDate = '';
+}
+
+async function manualSubmit() {
+    const community   = document.getElementById('mf-community').value.trim();
+    const region      = document.getElementById('mf-region').value;
+    const totalPrice  = parseFloat(document.getElementById('mf-totalPrice').value);
+    const area        = parseFloat(document.getElementById('mf-area').value);
+    let   unitPrice   = parseFloat(document.getElementById('mf-unitPrice').value);
+    const layout      = normalizeLayout(document.getElementById('mf-layout').value.trim());
+    const decoration  = normalizeDecoration(document.getElementById('mf-decoration').value.trim());
+    const orientation = normalizeOrientation(document.getElementById('mf-orientation').value.trim());
+    const floor       = document.getElementById('mf-floor').value.trim();
+    const sourceUrl   = document.getElementById('mf-sourceUrl').value.trim();
+
+    const errBox = document.getElementById('mf-error');
+    errBox.style.display = 'none';
+
+    if (!community)  { errBox.textContent = '小区必填'; errBox.style.display = ''; return; }
+    if (!totalPrice) { errBox.textContent = '总价必填且必须 > 0'; errBox.style.display = ''; return; }
+    if (!area)       { errBox.textContent = '面积必填且必须 > 0'; errBox.style.display = ''; return; }
+
+    if (!unitPrice) unitPrice = Math.round(totalPrice * 10000 / area);
+
+    const hashKey = makeHash(community, area, totalPrice, floor);
+    const all = await db.getAll();
+    const hasDup = all.some((r) => {
+        if (String(r.id || '') === String(_manualEditingId || '')) return false;
+        return String(r.hashKey || '') === hashKey;
+    });
+    if (hasDup) {
+        if (!confirm('库中已有看起来一样的房源（小区+面积+总价+楼层 全相同），仍要保存吗？')) return;
+    }
+
+    const rec = {
+        id: _manualEditingId || makeManualId(),
+        community, region,
+        floor, layout, decoration, orientation,
+        totalPrice, unitPrice, area,
+        date: _manualEditingDate || nowStr(),
+        sourceUrl,
+        platform: _manualEditingSourcePlatform || 'manual',
+        hashKey,
+    };
+    await db.addOne(rec);
+    const wasEditing = !!_manualEditingId;
+    closeManualForm();
+    toast(wasEditing ? '已保存修改' : '已保存到库', 'success');
+    await render();
+}
+
+/* ========================================================================
+ * 启动
+ * ====================================================================== */
+(async function bootstrap() {
+    try {
+        await db.init();
+        await maybeMigrate();
+        const areaStats = await maybeRepairHistoricalArea();
+        if (areaStats.written > 0) {
+            toast(`已自动修正 ${areaStats.written} 条历史面积异常数据`, 'success');
+        }
+        const metaStats = await maybeRepairHistoricalMeta();
+        if (metaStats.written > 0) {
+            toast(
+                `已更新 ${metaStats.written} 条已采集信息（户型 ${metaStats.layoutChanged} / 装修 ${metaStats.decorationChanged} / 朝向 ${metaStats.orientationChanged}）`,
+                'success'
+            );
+        }
+        const removed = await removeSyntheticRecords();
+        if (removed > 0) {
+            toast(`已移除 ${removed} 条补充数据，请使用自动采集获取真实房源`, 'success');
+        }
+    } catch (err) {
+        console.error('IndexedDB 初始化失败：', err);
+        toast('IndexedDB 初始化失败，请检查浏览器是否支持', 'danger');
+    }
+    buildRegionPills();
+    initFloatingProgressWindow();
+    initDecorationBackfillPolicyControl();
+    initBatchRepairAutoOpenToggle();
+    bindCollectSettingsPersistence();
+    bindPlatformCheckOnPlatformChange();
+    applyBackendPanelVisibility();
+    startBackendStatusPolling();
+    updateCollectStatusBar(0, '等待开始采集');
+    updateFloatingProgress(0, '等待开始采集');
+    await render();
+})();
+</script>
+</body>
+</html>
